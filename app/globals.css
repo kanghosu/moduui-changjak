@@ -1,0 +1,439 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 시네마 스튜디오 — 다크(기본) 토큰. --cin-* 은 Tailwind 투명도 조합용 RGB 트리플렛 */
+  --cin-bg: 15 18 22;
+  --cin-surface: 22 26 33;
+  --cin-surface2: 28 33 42;
+  --cin-line: 38 44 54;
+  --cin-text: 237 239 243;
+  --cin-sub: 170 179 192;   /* 가독성 ↑ */
+  --cin-dim: 124 133 148;   /* 가독성 ↑ */
+  --cin-amber: 245 165 36;
+  --c-bg: rgb(var(--cin-bg));
+  --c-surface: rgb(var(--cin-surface));
+  --c-surface2: rgb(var(--cin-surface2));
+  --c-line: rgb(var(--cin-line));
+  --c-text: rgb(var(--cin-text));
+  --c-sub: rgb(var(--cin-sub));
+  --c-dim: rgb(var(--cin-dim));
+  --c-amber: rgb(var(--cin-amber));
+  --c-amber-deep: #b97a10;
+  --c-ok: #4caf7d;
+  --c-warn: #e0a63e;
+  --c-danger: #e2604c;
+  color-scheme: dark;
+}
+
+/* ☀️ 라이트 모드 — 아이보리 한지 + 먹색 (눈 편한 창작실) */
+html[data-mode="light"] {
+  --cin-bg: 246 244 238;
+  --cin-surface: 255 255 255;
+  --cin-surface2: 239 236 227;
+  --cin-line: 224 219 206;
+  --cin-text: 31 35 40;
+  --cin-sub: 84 91 102;
+  --cin-dim: 138 143 153;
+  --cin-amber: 180 83 9;
+  --c-amber-deep: #8a4a06;
+  --c-ok: #1e7a4f;
+  --c-warn: #854f0b;
+  --c-danger: #b3362a;
+  color-scheme: light;
+}
+
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.input {
+  width: 100%;
+  border-radius: 0.625rem;
+  border: 1px solid var(--c-line);
+  background: var(--c-surface);
+  color: var(--c-text);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.input::placeholder {
+  color: var(--c-dim);
+}
+.input:focus {
+  border-color: var(--c-amber);
+  box-shadow: 0 0 0 3px rgb(245 165 36 / 0.15);
+}
+
+/* iOS 느낌 — 크고 둥글고 누르는 맛 */
+.btn-amber {
+  border-radius: 14px;
+  background: var(--c-amber);
+  color: #412402;
+  padding: 0.72rem 1.3rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+html[data-mode="light"] .btn-amber {
+  color: #fff;
+}
+.btn-amber:hover {
+  filter: brightness(1.06);
+}
+.btn-amber:active {
+  transform: scale(0.97);
+}
+.btn-ghost {
+  border-radius: 14px;
+  border: 1px solid var(--c-line);
+  background: var(--c-surface);
+  color: var(--c-sub);
+  padding: 0.7rem 1.15rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+.btn-ghost:hover {
+  border-color: var(--c-dim);
+  color: var(--c-text);
+}
+.btn-ghost:active {
+  transform: scale(0.97);
+}
+
+.card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: 0.875rem;
+}
+
+/* ── 히어로 (시네마 스포트라이트) ── */
+.hero {
+  position: relative;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  border: 1px solid var(--c-line);
+  background-color: #0c0f13;
+  background-image:
+    linear-gradient(102deg, rgba(12, 15, 19, 0.97) 0%, rgba(12, 15, 19, 0.86) 34%, rgba(12, 15, 19, 0.35) 66%, rgba(12, 15, 19, 0.65) 100%),
+    url("/hero-cinema.png");
+  background-size: cover;
+  background-position: center right;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(52% 80% at 76% 24%, rgba(245, 165, 36, 0.14), transparent 62%),
+    radial-gradient(40% 60% at 18% 85%, rgba(78, 140, 217, 0.08), transparent 60%);
+  pointer-events: none;
+}
+/* 히어로는 라이트 모드에서도 '극장'(다크 포스터 카드)을 유지 — 내부 텍스트 토큰을 다크로 고정 */
+.hero {
+  --cin-text: 237 239 243;
+  --cin-sub: 176 184 196;
+  --cin-dim: 130 139 153;
+  --cin-line: 44 51 62;
+  --cin-amber: 245 165 36;
+  --c-text: rgb(var(--cin-text));
+  --c-sub: rgb(var(--cin-sub));
+  --c-dim: rgb(var(--cin-dim));
+  --c-line: rgb(var(--cin-line));
+  --c-amber: rgb(var(--cin-amber));
+  --c-surface: #161a21;
+  --c-amber-deep: #f5a524;
+  color-scheme: dark;
+}
+html[data-mode="light"] .hero .btn-amber {
+  color: #412402;
+}
+
+/* 검색 드롭다운 — 모드 상관없이 히어로 안에선 다크 유리판 */
+.dropdown-panel {
+  background: rgba(16, 19, 25, 0.95);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--c-line);
+}
+
+.hero-title {
+  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  line-height: 1.22;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.hero-title em {
+  font-style: normal;
+  color: var(--c-amber);
+}
+
+/* ── 글래스 컨트롤 ── */
+.glass {
+  background: rgba(22, 26, 33, 0.62);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+.hero-input {
+  width: 100%;
+  border-radius: 0.9rem;
+  padding: 0.95rem 1rem 0.95rem 2.9rem;
+  font-size: 1rem;
+  color: var(--c-text);
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.hero-input::placeholder {
+  color: var(--c-dim);
+}
+.hero-input:focus {
+  border-color: rgba(245, 165, 36, 0.75);
+  box-shadow: 0 0 0 4px rgba(245, 165, 36, 0.14), 0 12px 40px -12px rgba(245, 165, 36, 0.25);
+}
+
+/* ── 세그먼트 토글 ── */
+.seg {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+}
+.seg button {
+  border-radius: 999px;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.8125rem;
+  color: var(--c-sub);
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.seg button.on {
+  background: var(--c-amber);
+  color: #412402;
+  font-weight: 700;
+}
+
+/* ── 칩 — 터치하기 좋은 크기 ── */
+.chip {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0.42rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--c-sub);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.chip:hover {
+  border-color: var(--c-amber);
+  color: var(--c-amber);
+  background: rgba(245, 165, 36, 0.08);
+}
+
+/* ── 포스터 3D 틸트 ── */
+.poster-tile {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.poster-tile:hover {
+  z-index: 5;
+}
+.poster-tile img,
+.poster-tile .poster-fallback {
+  transition: box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.poster-tile:hover img,
+.poster-tile:hover .poster-fallback {
+  border-color: rgba(245, 165, 36, 0.65);
+  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(245, 165, 36, 0.35), 0 8px 32px -8px rgba(245, 165, 36, 0.22);
+}
+
+/* ── 작업실 테마 (탐색=극장, 집필=취향대로) ── */
+.paper {
+  --c-bg: #faf9f6;
+  --c-surface: #ffffff;
+  --c-surface2: #f3f1ea;
+  --c-line: #e7e4dd;
+  --c-text: #1f2328;
+  --c-sub: #6b7280;
+  --c-dim: #9ca3af;
+  --c-amber: #d97706;
+  --c-amber-deep: #8a5a0b;
+  --c-ok: #1e7a4f;
+  --c-warn: #854f0b;
+  --c-font: "Pretendard Variable", Pretendard, sans-serif;
+  color-scheme: light;
+  background-color: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--c-font);
+}
+
+/* 🏛 세피아 — 고전 소설의 책장 */
+.paper[data-theme="sepia"] {
+  --c-bg: #f1e8d4;
+  --c-surface: #faf4e6;
+  --c-surface2: #e9dec6;
+  --c-line: #d9c9a8;
+  --c-text: #3d3426;
+  --c-sub: #7a6c52;
+  --c-dim: #a3937a;
+  --c-amber: #b0722a;
+  --c-amber-deep: #7c4d15;
+  --c-ok: #4f7a3a;
+  --c-warn: #8a6215;
+}
+
+/* 🌙 심야 서재 — 밤에 쓰는 사람 */
+.paper[data-theme="midnight"] {
+  --c-bg: #14161a;
+  --c-surface: #1c1f25;
+  --c-surface2: #23272f;
+  --c-line: #2f3541;
+  --c-text: #e8e6e1;
+  --c-sub: #9aa0ab;
+  --c-dim: #626875;
+  --c-amber: #f5a524;
+  --c-amber-deep: #f5a524;
+  --c-ok: #4caf7d;
+  --c-warn: #e0a63e;
+  color-scheme: dark;
+}
+
+/* 🌲 숲속 새벽 — 초록의 집중 */
+.paper[data-theme="forest"] {
+  --c-bg: #0f1713;
+  --c-surface: #16211b;
+  --c-surface2: #1c2a22;
+  --c-line: #27392e;
+  --c-text: #e2ede6;
+  --c-sub: #96a89d;
+  --c-dim: #5e7166;
+  --c-amber: #7fb069;
+  --c-amber-deep: #a3cc8f;
+  --c-ok: #7fb069;
+  --c-warn: #d9b45b;
+  color-scheme: dark;
+}
+
+/* ⌨️ 타자기 — 활자의 리듬 */
+.paper[data-theme="typewriter"] {
+  --c-bg: #efece3;
+  --c-surface: #f8f6ef;
+  --c-surface2: #e6e2d4;
+  --c-line: #d4cfbd;
+  --c-text: #2b2925;
+  --c-sub: #6e6a60;
+  --c-dim: #9b968a;
+  --c-amber: #c1502e;
+  --c-amber-deep: #8d3517;
+  --c-ok: #4f7a3a;
+  --c-warn: #8a6215;
+  --c-font: "Courier New", Courier, monospace;
+}
+
+/* 테마 공용 알약 배지 — 어떤 테마에서도 읽히게 color-mix 사용 */
+.pill {
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.pill-amber {
+  background: color-mix(in srgb, var(--c-amber) 16%, transparent);
+  color: var(--c-amber-deep);
+  font-weight: 700;
+}
+.pill-ok {
+  background: color-mix(in srgb, var(--c-ok) 14%, transparent);
+  color: var(--c-ok);
+}
+.pill-warn {
+  background: color-mix(in srgb, var(--c-warn) 15%, transparent);
+  color: var(--c-warn);
+}
+.pill-muted {
+  background: var(--c-surface2);
+  color: var(--c-sub);
+}
+.pill-line {
+  border: 1px solid var(--c-line);
+  color: var(--c-sub);
+}
+
+/* 테마 선택 버튼 */
+.theme-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  border: 1px solid var(--c-line);
+  padding: 3px 9px;
+  font-size: 11px;
+  color: var(--c-sub);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.theme-dot:hover {
+  border-color: var(--c-amber);
+  color: var(--c-text);
+}
+.theme-dot.on {
+  border-color: var(--c-amber);
+  color: var(--c-amber-deep);
+  font-weight: 700;
+}
+.paper .input {
+  background: #fff;
+}
+.paper .card {
+  background: var(--c-surface);
+  border-color: var(--c-line);
+}
+.paper .btn-amber {
+  background: var(--c-amber);
+  color: #fff;
+}
+.paper .btn-ghost {
+  border-color: var(--c-line);
+  color: var(--c-sub);
+}
+
+/* 블록 카드 3상태 */
+.blk {
+  width: 100%;
+  text-align: left;
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--c-line);
+  background: var(--c-surface);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.blk:hover {
+  transform: translateY(-1px);
+  border-color: var(--c-amber);
+}
+.blk.empty {
+  border-style: dashed;
+  color: var(--c-dim);
+  background: transparent;
+}
+.blk.sel {
+  border-color: var(--c-amber);
+  box-shadow: 0 0 0 3px rgb(217 119 6 / 0.15);
+}
+.blk.reversal {
+  border-width: 2px;
+  border-color: var(--c-amber);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
