@@ -13,14 +13,42 @@ function normTitle(s: string): string {
   return (s || "").replace(/[\s<>:,·\[\]()「」『』·.\-]/g, "").toLowerCase();
 }
 
-function findInLibrary(title: string): Story | undefined {
+// AI 분석 라이브러리 — engine/ai-library/*.json 을 요청 시점에 읽음 (파일이 늘어나면 자동 반영)
+let aiCache: { at: number; items: Story[] } | null = null;
+async function loadAiLibrary(): Promise<Story[]> {
+  if (aiCache && Date.now() - aiCache.at < 30_000) return aiCache.items;
+  const items: Story[] = [];
+  try {
+    const dir = path.join(ROOT, "engine", "ai-library");
+    const files = (await fs.readdir(dir)).filter((f) => f.endsWith(".json"));
+    const masterTitles = new Set(LIBRARY.map((s) => normTitle(s.title || "")));
+    for (const f of files) {
+      try {
+        const s = JSON.parse(await fs.readFile(path.join(dir, f), "utf8")) as Story;
+        if (!Array.isArray(s?.blocks) || s.blocks.length !== 24) continue;
+        if (masterTitles.has(normTitle(s.title || ""))) continue; // 거장 확정본이 항상 우선
+        s.origin = "ai";
+        if (!Array.isArray(s.notes)) s.notes = [];
+        items.push(s);
+      } catch { /* 깨진 파일은 건너뜀 */ }
+    }
+    items.sort((a, b) => (b.year || "").localeCompare(a.year || ""));
+  } catch { /* 폴더 없으면 빈 목록 */ }
+  aiCache = { at: Date.now(), items };
+  return items;
+}
+
+function findIn(list: Story[], title: string): Story | undefined {
   const q = normTitle(title);
   if (!q) return undefined;
-  // 정확/부분 매칭
   return (
-    LIBRARY.find((s) => normTitle(s.title || "") === q) ||
-    LIBRARY.find((s) => normTitle(s.title || "").includes(q) || q.includes(normTitle(s.title || "")))
+    list.find((s) => normTitle(s.title || "") === q) ||
+    list.find((s) => normTitle(s.title || "").includes(q) || q.includes(normTitle(s.title || "")))
   );
+}
+
+function findInLibrary(title: string): Story | undefined {
+  return findIn(LIBRARY, title);
 }
 
 async function readFileSafe(rel: string): Promise<string> {
@@ -52,11 +80,16 @@ function extractJson(text: string): unknown {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-// GET: 라이브러리 목록 (포스터 포함, UI용)
+// GET: 라이브러리 목록 (포스터 포함, UI용) — 거장 확정 + AI 분석
 export async function GET() {
   const { posterFor } = await import("@/engine/tmdb");
+  const ai = await loadAiLibrary();
+  const all = [
+    ...LIBRARY.map((s) => ({ s, origin: "master" as string })),
+    ...ai.map((s) => ({ s, origin: "ai" as string })),
+  ];
   const list = await Promise.all(
-    LIBRARY.map(async (s) => {
+    all.map(async ({ s, origin }) => {
       const hit = await posterFor(s.title || "", s.year || undefined).catch(() => null);
       const kw = (s.keyword || "").trim();
       return {
@@ -64,12 +97,13 @@ export async function GET() {
         year: (s.year || hit?.year || "").slice(0, 4),
         keyword: kw.length > 0 && kw.length <= 6 ? kw : "", // 메타 오추출 잡음 제거
         analyst: s.analyst,
+        origin,
         posterUrl: hit?.posterUrl ?? null,
         backdropUrl: hit?.backdropUrl ?? null,
       };
     })
   );
-  return NextResponse.json({ list, tmdb: !!process.env.TMDB_API_KEY });
+  return NextResponse.json({ list, tmdb: true });
 }
 
 // POST: 영화 제목 → 24블록 벤치마크 분석 (키 있으면 AI 자동 분석, 없으면 라이브러리)
@@ -92,6 +126,17 @@ export async function POST(req: NextRequest) {
       story: hit,
       issues: validateStructure(hit),
       engine: "library",
+      mode: "benchmark",
+    });
+  }
+
+  // 1.5) AI 분석 라이브러리 (사전 생성된 흥행작 분석)
+  const aiHit = findIn(await loadAiLibrary(), title);
+  if (aiHit) {
+    return NextResponse.json({
+      story: aiHit,
+      issues: validateStructure(aiHit),
+      engine: "ai-library",
       mode: "benchmark",
     });
   }

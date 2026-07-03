@@ -57,6 +57,9 @@ export interface Story {
   analyst?: string;         // 분석정리자
   fourActLogline?: string;  // 4막구조 로그라인 스토리
   takeaway?: string;        // 착안점 (장르 특징·교훈·MyStory 적용)
+  origin?: string;          // "master"(거장 확정) | "ai"(AI 분석 라이브러리)
+  directorNote?: string;    // 감독의 기법 — 연출·편집·상징 등 작가 참고용
+  key?: string;             // 슬러그
 }
 
 export interface ValidationIssue {

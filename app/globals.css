@@ -27,21 +27,31 @@
   color-scheme: dark;
 }
 
-/* ☀️ 라이트 모드 — 아이보리 한지 + 먹색 (눈 편한 창작실) */
+/* ☀️ 라이트 모드 — 아이보리 한지 + 먹색 (눈 편한 프리미엄 창작실) */
 html[data-mode="light"] {
-  --cin-bg: 246 244 238;
+  --cin-bg: 247 245 240;
   --cin-surface: 255 255 255;
-  --cin-surface2: 239 236 227;
-  --cin-line: 224 219 206;
-  --cin-text: 31 35 40;
-  --cin-sub: 84 91 102;
-  --cin-dim: 138 143 153;
-  --cin-amber: 180 83 9;
+  --cin-surface2: 241 238 230;
+  --cin-line: 216 210 196;
+  --cin-text: 26 29 34;
+  --cin-sub: 71 78 89;
+  --cin-dim: 118 125 136;
+  --cin-amber: 176 78 8;
   --c-amber-deep: #8a4a06;
   --c-ok: #1e7a4f;
   --c-warn: #854f0b;
   --c-danger: #b3362a;
   color-scheme: light;
+}
+/* 라이트 모드 — 카드에 은은한 깊이(종이 위 종이) */
+html[data-mode="light"] .card {
+  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.04), 0 10px 28px -16px rgba(31, 35, 40, 0.12);
+}
+html[data-mode="light"] .btn-amber {
+  box-shadow: 0 2px 6px -1px rgba(176, 78, 8, 0.35), 0 8px 20px -8px rgba(176, 78, 8, 0.3);
+}
+html[data-mode="light"] .btn-ghost {
+  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.05);
 }
 
 body {
@@ -72,11 +82,11 @@ body {
 
 /* iOS 느낌 — 크고 둥글고 누르는 맛 */
 .btn-amber {
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--c-amber);
   color: #412402;
-  padding: 0.72rem 1.3rem;
-  font-size: 0.95rem;
+  padding: 0.85rem 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   transition: transform 0.12s ease, filter 0.15s ease;
@@ -91,12 +101,12 @@ html[data-mode="light"] .btn-amber {
   transform: scale(0.97);
 }
 .btn-ghost {
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid var(--c-line);
   background: var(--c-surface);
   color: var(--c-sub);
-  padding: 0.7rem 1.15rem;
-  font-size: 0.9rem;
+  padding: 0.8rem 1.3rem;
+  font-size: 0.95rem;
   font-weight: 600;
   transition: border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
@@ -151,8 +161,30 @@ html[data-mode="light"] .btn-amber {
   --c-surface: #161a21;
   --c-amber-deep: #f5a524;
   color-scheme: dark;
+  color: var(--c-text); /* 라이트 모드에서 body의 먹색을 상속받지 않도록 명시 */
 }
 html[data-mode="light"] .hero .btn-amber {
+  color: #412402;
+}
+
+/* 영화 백드롭 위 결과 히어로 — 배경이 어두운 사진이므로 어느 모드에서든 텍스트는 밝게 고정 */
+.backdrop-hero {
+  --cin-text: 240 242 246;
+  --cin-sub: 190 197 208;
+  --cin-dim: 148 156 170;
+  --cin-line: 58 65 78;
+  --cin-amber: 245 165 36;
+  --c-text: rgb(var(--cin-text));
+  --c-sub: rgb(var(--cin-sub));
+  --c-dim: rgb(var(--cin-dim));
+  --c-line: rgb(var(--cin-line));
+  --c-amber: rgb(var(--cin-amber));
+  --c-amber-deep: #f5a524;
+  color-scheme: dark;
+  background-color: #13171d;
+  color: var(--c-text); /* 어두운 백드롭 위 기본 글자색을 밝게 명시 */
+}
+.backdrop-hero .btn-amber {
   color: #412402;
 }
 
@@ -222,8 +254,8 @@ html[data-mode="light"] .hero .btn-amber {
 .chip {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  padding: 0.42rem 0.95rem;
-  font-size: 0.85rem;
+  padding: 0.5rem 1.05rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--c-sub);
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;

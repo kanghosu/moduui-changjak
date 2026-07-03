@@ -58,8 +58,12 @@ async function saveCache() {
   }
 }
 
+// 데모 배포용 기본 키 — 사용자가 노출을 승인함 (개인/비상업 무료 키).
+// .env.local의 TMDB_API_KEY가 있으면 그것을 우선 사용.
+const DEFAULT_TMDB_KEY = "b622c6c5343734b3c7bd7a877a7468cf";
+
 export async function searchMovie(query: string, year?: string): Promise<TmdbHit[]> {
-  const key = process.env.TMDB_API_KEY;
+  const key = process.env.TMDB_API_KEY || DEFAULT_TMDB_KEY;
   if (!key || !query.trim()) return [];
   const url = `${API}/search/movie?api_key=${key}&language=ko-KR&query=${encodeURIComponent(query.trim())}${year ? `&year=${year}` : ""}`;
   try {
