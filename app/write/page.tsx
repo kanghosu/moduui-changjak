@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiResult, Results } from "@/components/BenchmarkResult";
+import { ConceptHelp } from "@/components/ConceptHelp";
 
 /* ── 타입 ─────────────────────────────────────── */
 interface FormState {
@@ -190,7 +191,7 @@ function WriteInner() {
               <div className="grid grid-cols-3 gap-2.5">
                 <Field label="주인공 이름"><input className="input" value={form.heroName} onChange={(e) => update("heroName", e.target.value)} placeholder="이름/별명" /></Field>
                 <Field label="겉욕망 — 원하는 것"><input className="input" value={form.heroWant} onChange={(e) => update("heroWant", e.target.value)} placeholder="돈, 인정, 복수…" /></Field>
-                <Field label="속결핍 — 진짜 필요한 것"><input className="input" value={form.heroNeed} onChange={(e) => update("heroNeed", e.target.value)} placeholder="믿음, 가족, 자존…" /></Field>
+                <Field label={<><ConceptHelp term="결핍">속결핍</ConceptHelp> — 진짜 필요한 것</>}><input className="input" value={form.heroNeed} onChange={(e) => update("heroNeed", e.target.value)} placeholder="믿음, 가족, 자존…" /></Field>
               </div>
               <div className="grid grid-cols-3 gap-2.5">
                 <Field label="장르"><input className="input" value={form.genre} onChange={(e) => update("genre", e.target.value)} /></Field>
@@ -254,7 +255,7 @@ function WriteInner() {
 }
 
 /* ── 부품 ─────────────────────────────────────── */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
   return <label className="block"><span className="mb-1 block text-xs font-medium text-cinema-sub">{label}</span>{children}</label>;
 }
 
