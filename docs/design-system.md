@@ -1,0 +1,107 @@
+# 모두의 창작 디자인 시스템
+
+P1의 기본 표면은 디자인 리서치 §3의 후보 A **따뜻한 작업실**이다. 종이처럼 따뜻한 라이트 캔버스에서 사용자가 오래 쓰고, 후보 B **편집실의 밤**은 타임라인·프리뷰의 집중용 보조 테마로 사용한다. 진행 상태는 퍼센트보다 사용자가 만든 산출물과 다음 행동으로 설명한다.
+
+## 1. 토큰
+
+### 색상
+
+| 역할 | CSS 변수 | 라이트 기본 | 다크 보조 | 용도 |
+|---|---|---|---|---|
+| Canvas | `--canvas` | `#F7F4EF` | `#171717` | 페이지 작업면 |
+| Surface | `--surface` | `#FFFCF8` | `#22211F` | 카드, 입력 |
+| Elevated | `--elevated` | `#FFFFFF` | `#2C2A27` | 팝오버, 선택된 표면 |
+| Text | `--text` | `#242321` | `#F4F0EA` | 본문, 제목 |
+| Muted | `--muted` | `#746F67` | `#A8A198` | 설명, 메타, 보조 라벨 |
+| Accent | `--accent` | `#B54E32` | `#F07A55` | 현재 단계, 주요 행동 |
+| Secondary | `--secondary` | `#486A7A` | `#8AB4C7` | 장면, AI 제안 구분 |
+| Success | `--success` | `#4F765E` | `#8BC19B` | 확정, 저장 완료 |
+| Danger | `--danger` | `#B3362A` | `#F08A7C` | 오류, 입력 안내 |
+| Border | `--border` | `#E5DED4` | `#3C3935` | 경계, 구분 |
+
+Tailwind에서는 `bg-canvas`, `bg-surface`, `bg-elevated`, `text-text`, `text-muted`, `bg-accent`, `text-secondary`, `text-success`, `text-danger`, `border-border`처럼 사용한다. 투명도가 필요할 때도 `bg-accent/10`처럼 같은 토큰의 alpha만 사용한다.
+
+### 대비 조정 내역
+
+- 후보 A 라이트 Accent 원안 `#C65A3A`는 `#FFFCF8` 위 본문 크기 대비가 **4.17:1**로 AA 4.5:1에 미달했다. 명도만 한 단계 낮춘 `#B54E32`로 조정했으며 대비는 **5.01:1**이다.
+- 후보 A의 `Muted #746F67`는 `#FFFCF8` 위 **4.87:1**, `Secondary #486A7A`는 **5.67:1**, `Success #4F765E`는 **5.03:1**로 유지했다.
+- 후보 A 표에 Danger 역할이 없어 기존 시스템의 오류색 `#B3362A`를 의미 토큰으로 보완했다. 라이트 Surface 위 **5.90:1**이며, 다크 보조 테마는 `#F08A7C`로 두어 `#171717` 위 **7.37:1**을 확보했다.
+- 다크 후보 A 원안의 Accent `#F07A55`, Muted `#A8A198`, Secondary `#8AB4C7`, Success `#8BC19B`는 `#171717` 위 각각 **6.51:1, 7.01:1, 8.05:1, 8.71:1**로 조정하지 않았다.
+- 대비 계산은 WCAG 2 AA 일반 본문 기준 4.5:1을 사용했다. 경계색은 텍스트로 사용하지 않고 구조 구분에만 쓴다.
+
+### 타이포그래피
+
+`styles/tokens.css`에 jsdelivr CDN의 Pretendard 400/500/600/700을 `font-display: swap`으로 선언한다.
+
+```css
+font-family: Pretendard, Inter, ui-sans-serif, system-ui, -apple-system,
+  BlinkMacSystemFont, "Segoe UI", sans-serif;
+```
+
+| 토큰 | 값 | 사용 |
+|---|---:|---|
+| `--font-size-h1` | 28px / 1.25 | 화면 제목 |
+| `--font-size-h2` | 22px / 1.35 | 섹션 제목 |
+| `--font-size-h3` | 18px / 1.35 | 카드 제목 |
+| `--font-size-body` | 15px / 1.65 | 본문, 입력 |
+| `--font-size-body-sm` | 13.5px / 1.65 | 설명, 내비게이터 |
+| `--font-size-label` | 12px / 1.4 | 메타, 상태 |
+
+### 간격과 radius
+
+모든 간격은 4px 기본 단위에서 파생한다. Tailwind에서는 `ds-` 접두사 매핑을 사용한다.
+
+| 토큰 | 값 | 대표 사용 |
+|---|---:|---|
+| `--space-1` ~ `--space-6` | 4 / 8 / 12 / 16 / 20 / 24px | 인라인·컴포넌트 내부 |
+| `--space-8` | 32px | 그룹 간격 |
+| `--space-10` | 40px | 단계 전환 |
+| `--space-12` | 48px | 주요 구획 |
+| `--space-16` | 64px | 집중 편집 시작 여백 |
+| `--radius-sm` | 6px | 입력, 칩 |
+| `--radius-md` | 10px | 버튼, 카드 |
+| `--radius-lg` | 16px | 패널, 진행 내비게이터 |
+| `--radius-xl` | 24px | 큰 프리뷰 |
+| `--radius-full` | 999px | 배지, 테마 토글 |
+
+## 2. 사용 규칙
+
+1. 한 화면의 의미 있는 색은 Canvas/Surface 계열을 제외하고 4개 이하로 유지한다.
+2. Accent는 현재 단계 또는 현재 행동 한 곳에만 쓴다. 장식용 그라디언트와 무작위 강조색은 금지한다.
+3. 빈칸은 실패색으로 표시하지 않는다. `아직 비어 있음`, `앞 장면이 필요함`, `아직 선택하지 않음`처럼 상태와 다음 행동을 함께 쓴다.
+4. AI 제안은 사용자 문장을 덮지 않는다. `제안 보기 → 일부 가져오기 → 내 문장으로 다듬기` 순서를 지키고, 전체 적용을 기본 CTA로 두지 않는다.
+5. 이전 단계는 다시 클릭해 수정할 수 있게 하고, 이후 단계는 잠그지 않고 `아직 비어 있음`으로 보여준다.
+6. 상태를 색만으로 전달하지 않는다. 텍스트와 `aria-current`, `aria-pressed`, `aria-invalid`를 함께 사용한다.
+7. 모든 상호작용 요소는 키보드 포커스가 보이며, reduced-motion 환경에서는 비필수 전환을 끈다.
+8. 라이트는 기본 작업면, 다크는 타임라인·프리뷰 집중 모드다. 모드 전환 시 단계나 입력 내용을 바꾸지 않는다.
+
+## 3. 컴포넌트 API 요약
+
+### 기초 컴포넌트 `components/ui/`
+
+| 컴포넌트 | 주요 props | 상태/규칙 |
+|---|---|---|
+| `Button` | `variant: primary \| ghost \| quiet`, `loading`, 표준 button props | primary/ghost/quiet, disabled, loading, focus |
+| `Card` | `tone: surface \| elevated \| interactive` | 표면 계층을 위한 border/radius, interactive hover |
+| `Chip` | `variant: default \| accent \| secondary \| success \| danger` | 상태를 짧은 텍스트로 병기 |
+| `Input` | `label`, `hint`, `error`, 표준 input props | default, focus, disabled, error |
+| `Textarea` | `label`, `hint`, `error`, 표준 textarea props | 긴 글 입력, resize, disabled, error |
+| `Popover` | `trigger`, `children`, `open`, `onOpenChange`, `align` | Escape/바깥 클릭 닫기, dialog semantics |
+
+`Popover`는 Radix API를 도입할 수 있도록 `trigger/children/open/onOpenChange` 계약을 유지한 프레젠테이션 wrapper다. 현재 작업 환경에서 `@radix-ui/react-popover` 설치 권한이 거부되어 native DOM fallback으로 동작한다. 의존성 설치 권한이 확보되면 내부 구현만 Radix primitive로 교체한다.
+
+### P1 고유 컴포넌트 `components/`
+
+| 컴포넌트 | 주요 props | 책임 |
+|---|---|---|
+| `ProgressNavigator` | `steps`, `onStepChange` | 단계 상태, 산출물명, 다음 행동, 이전 이동, 이후 `아직 비어 있음` |
+| `ModePicker` | `value`, `onChange` | 장면 우선/문답 우선 선택 카드 |
+| `ChoiceCard` | `options`, `selectedId`, `onSelect` | 로그라인 선택, `내 선택` 배지, 버린 안 접힘 보존 |
+| `DraftBlock` | `userText`, `suggestionText`, `onPartialImport` | 사용자 문장/AI 제안 분리, 일부 가져오기 자리 |
+| `HelpPopover` | `term`, `definition`, `relatedStep` | 용어와 정의만 받는 프레젠테이션 컴포넌트. API 호출 없음 |
+
+## 4. 프리뷰 상태 목록
+
+`/design`에서 라이트/다크 토글, 전체 색상 스와치, 6단계 타이포, Button 3 variants와 disabled/loading, Chip 상태, Input/Textarea default/error/disabled, Popover, 두 입력 모드, 로그라인 선택과 보관된 안, DraftBlock, ProgressNavigator, 마이크로카피 규범을 확인할 수 있다.
+
+검수 시 375px에서 한 열로 재배치하고, 768px·1280px에서 카드와 진행 내비게이터의 관계가 유지되는지 확인한다.
