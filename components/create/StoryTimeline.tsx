@@ -67,10 +67,7 @@ export function StoryTimeline({ story }: StoryTimelineProps) {
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const blockRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const selectedBlock = story.blocks.find((block) => block.index === selectedIndex);
-  const timelineColumns = [
-    "minmax(6.5rem, 7rem)",
-    ...story.blocks.map((block) => (block.index === selectedIndex ? "minmax(13rem, 2.4fr)" : "minmax(5.5rem, 1fr)")),
-  ].join(" ");
+  const timelineColumns = ["minmax(6.5rem, 7rem)", ...story.blocks.map(() => "minmax(5.5rem, 1fr)")].join(" ");
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -171,7 +168,6 @@ export function StoryTimeline({ story }: StoryTimelineProps) {
             <div className="sticky left-0 z-10 bg-surface p-ds-3 text-ds-label font-semibold text-muted">장면</div>
             {story.blocks.map((block) => {
               const anchor = anchorFor(block);
-              const expanded = Math.abs(block.index - selectedIndex) <= 2;
               return (
                 <div key={block.index} className="min-h-ds-16 bg-surface p-ds-1">
                   <Button
@@ -181,7 +177,6 @@ export function StoryTimeline({ story }: StoryTimelineProps) {
                     type="button"
                     variant="ghost"
                     aria-pressed={block.index === selectedIndex}
-                    aria-expanded={expanded}
                     aria-label={"블록 " + block.index + " 상세 보기"}
                     className={cx(
                       "h-full w-full min-w-0 items-start justify-start gap-ds-2 overflow-hidden rounded-ds-sm p-ds-2 text-left",
@@ -194,10 +189,9 @@ export function StoryTimeline({ story }: StoryTimelineProps) {
                         <span className="text-ds-label font-bold text-text">{block.index}</span>
                         {anchor ? <Chip variant={anchor.variant} className="max-w-full truncate">{anchor.label}</Chip> : null}
                       </span>
-                      <span className={cx("text-ds-label font-semibold leading-relaxed text-text", expanded ? null : "line-clamp-2")}>
+                      <span className="line-clamp-2 text-ds-label font-semibold leading-relaxed text-text">
                         {block.subtitle || block.function}
                       </span>
-                      {expanded ? <span className="text-ds-label leading-relaxed text-muted">{blockContent(block)}</span> : null}
                     </span>
                   </Button>
                 </div>
@@ -227,7 +221,7 @@ export function StoryTimeline({ story }: StoryTimelineProps) {
         </Card>
       ) : null}
 
-      <p className="text-ds-label text-muted">블록을 누르면 상세가 열리고, 선택한 자리 주변만 카드 안에서 먼저 펼쳐집니다.</p>
+      <p className="text-ds-label text-muted">24칸 눈금은 항상 같은 폭으로 보이고, 블록을 누르면 아래 카드에서 상세가 열립니다.</p>
     </Card>
   );
 }
