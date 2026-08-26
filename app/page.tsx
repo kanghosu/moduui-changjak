@@ -119,6 +119,7 @@ export default function Home() {
           <Link href="/write" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">글쓰기</Link>
           <Link href="/studio" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">작업실</Link>
           <Link href="/library" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">내 서재</Link>
+          <Link href="/about" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">소개</Link>
           <button
             onClick={() => setMode(mode === "dark" ? "light" : "dark")}
             className="rounded-full border border-cinema-line px-3 py-1.5 text-sm transition-colors hover:border-cinema-dim"
