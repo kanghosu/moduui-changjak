@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
+import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
 import path from "path";
 import { validateStructure, type Story } from "@/engine/schema";
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
       let model: string | undefined;
 
       if (apiKey) {
-        model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+        model = MODEL_MAIN;
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
         const client = new Anthropic({ apiKey });
         runner = async ({ system, user }) => {
@@ -138,7 +139,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     const system = buildSystemPrompt({ template, skill, blocks, ontology, schema });
-    const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+    const model = MODEL_MAIN;
 
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const client = new Anthropic({ apiKey });

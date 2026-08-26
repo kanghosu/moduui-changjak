@@ -8,9 +8,13 @@
 //   ANTHROPIC_MODEL_LIGHT=claude-haiku-4-5
 //
 // 모르는 새 모델을 넣어도 최신 계약으로 취급되어 동작한다(예외목록 방식).
+//
+// 기본값은 품질 우선 단계의 선택이다. 언제 저렴한 모델로 내릴 수 있는지의
+// 기준은 docs/model-policy.md에 있다 — 기준 충족 전에는 내리지 않는다.
 
 /** 24블록 설계·로그라인 등 본생성용 */
-export const MODEL_MAIN = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+export const MODEL_MAIN = process.env.ANTHROPIC_MODEL || "claude-opus-5";
 
-/** 발화 추출·분류 등 가볍고 빈번한 호출용 (비용 통제) */
-export const MODEL_LIGHT = process.env.ANTHROPIC_MODEL_LIGHT || "claude-haiku-4-5";
+/** 발화 추출용. 추출 품질이 제품 생명선(PRD v2 §4)이라 품질 우선 단계에서는
+ *  본생성과 같은 모델을 쓴다. 다운그레이드 기준 충족 시 env로만 교체한다. */
+export const MODEL_LIGHT = process.env.ANTHROPIC_MODEL_LIGHT || "claude-opus-5";

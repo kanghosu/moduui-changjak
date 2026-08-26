@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
+import { MODEL_MAIN } from "@/engine/models";
 import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
@@ -65,7 +66,7 @@ async function callAnthropic(sceneText: string, blockGuide: string): Promise<rea
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return [];
 
-  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+  const model = MODEL_MAIN;
   const conceptContext = buildConceptPromptContext(["플롯", "결핍", "욕망", "전환점"]);
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const client = new Anthropic({ apiKey });
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const candidates = await callAnthropic(sceneText, blockGuide);
-    const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+    const model = MODEL_MAIN;
     return NextResponse.json({ candidates, benchmarks, engine: "anthropic", model, mode: "scene-reverse" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "장면 분석에 실패했습니다.";

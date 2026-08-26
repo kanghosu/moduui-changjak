@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
+import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
 import path from "path";
 import type { Story } from "@/engine/schema";
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
   // ── 키 있으면: AI가 실제 사건 3안 생성 ──
   if (apiKey && bb) {
     try {
-      const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+      const model = MODEL_MAIN;
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
       const client = new Anthropic({ apiKey });
       const resp = await client.messages.create({
