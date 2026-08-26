@@ -171,3 +171,26 @@ export function refusalOf(
   if (response?.stop_reason !== "refusal") return { refused: false };
   return { refused: true, category: response.stop_details?.category ?? undefined };
 }
+
+/* ── 거부 폴백 ──────────────────────────────────
+   Fable 5·Opus 5는 안전 분류기가 거부하면 턴이 그대로 죽는다.
+   실제로 겪은 사례: 사고(thinking) 블록을 다루는 코드를 작업하던 중
+   category="reasoning_extraction"으로 거부됐다. 정상적인 엔지니어링 작업인데도
+   분류기가 오탐한 것이다. 공식 문서도 "safe, normal conversations에서도
+   가끔 발생한다"고 안내한다.
+
+   서버측 `fallbacks` 파라미터는 최신 SDK와 베타 헤더가 필요하고 Claude API
+   전용이다. 우리는 SDK 버전·프로바이더와 무관하게 동작하도록 클라이언트측에서
+   다른 모델로 한 번 더 시도한다. */
+
+/** 거부됐을 때 대신 시도할 모델. 없으면 폴백하지 않는다. */
+export function fallbackModelFor(modelId: string): string | null {
+  const m = (modelId || "").toLowerCase();
+  const configured = process.env.ANTHROPIC_MODEL_FALLBACK;
+  if (configured && configured !== modelId) return configured;
+
+  // 거부가 잦은 최신 계열 → 상대적으로 보수적인 모델로 내린다
+  if (m.includes("claude-fable") || m.includes("claude-mythos")) return "claude-opus-5";
+  if (m.includes("claude-opus-5")) return "claude-sonnet-4-6";
+  return null; // Sonnet·Haiku 계열은 폴백 대상 없음
+}

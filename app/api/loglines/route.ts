@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
+import { callModelJson, RefusalError } from "@/engine/anthropic-call";
 import type { ExtractedElements, LoglineOption } from "@/engine/creation";
 import { matchBenchmarks, libraryTitles } from "@/engine/matcher";
 import { MODEL_MAIN } from "@/engine/models";
 
 export const runtime = "nodejs";
-
-function extractJson(text: string): unknown {
-  const cleaned = text.replace(/```json|```/g, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("JSON 객체를 찾을 수 없음");
-  return JSON.parse(cleaned.slice(start, end + 1));
-}
 
 // 키 없을 때: 템플릿 + 휴리스틱 벤치마크로 3안 골격 생성
 function mockLoglines(utterance: string, el: ExtractedElements): LoglineOption[] {
@@ -86,30 +78,11 @@ export async function POST(req: NextRequest) {
 
     const userMsg = JSON.stringify({ utterance, elements });
 
-    const once = async (extra = "") => {
-      const resp = await client.messages.create({
-        model,
-        ...buildRequestParams(model!, { maxTokens: 2000 }),
-        system,
-        messages: [{ role: "user", content: userMsg + extra }],
-      });
-      // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
-      // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
-      const _refusal = refusalOf(resp);
-      if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
-      const text = resp.content
-        .filter((b): b is { type: "text"; text: string } => b.type === "text")
-        .map((b) => b.text)
-        .join("\n");
-      return extractJson(text) as { options?: LoglineOption[] };
-    };
-
-    let parsed: { options?: LoglineOption[] };
-    try {
-      parsed = await once();
-    } catch {
-      parsed = await once("\n\n반드시 JSON 객체 하나만 출력하라. 코드펜스/설명 금지.");
-    }
+    // 거부·파싱 실패·모델 계약을 헬퍼가 모두 흡수한다 (engine/anthropic-call)
+    const called = await callModelJson<{ options?: LoglineOption[] }>(client, model, {
+      system, user: userMsg, maxTokens: 2000,
+    });
+    const parsed = called.data;
 
     let options = Array.isArray(parsed.options) ? parsed.options.slice(0, 3) : [];
     // 벤치마크가 목록에 없으면 휴리스틱으로 보정
@@ -122,8 +95,12 @@ export async function POST(req: NextRequest) {
     }));
     if (options.length < 3) options = [...options, ...mockLoglines(utterance, elements)].slice(0, 3);
 
-    return NextResponse.json({ options, engine: "anthropic", model });
+    return NextResponse.json({ options, engine: "anthropic", model: called.modelUsed, fellBack: called.fellBack });
   } catch (err) {
+    if (err instanceof RefusalError) {
+      // 안전 분류기 거부는 서버 오류가 아니다 — 사용자에게 이유를 그대로 전한다
+      return NextResponse.json({ error: err.message }, { status: 422 });
+    }
     const message = err instanceof Error ? err.message : "로그라인 생성 실패";
     return NextResponse.json({ error: message }, { status: 500 });
   }

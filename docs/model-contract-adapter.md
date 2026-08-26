@@ -380,3 +380,40 @@ TypeScript에서 테스트가 `.ts` 확장자로 import하면 `tsconfig.json`에
 
 설계 참고: [Hermes Agent](https://github.com/NousResearch/hermes-agent) — MIT License, Copyright (c) 2025 Nous Research.
 코드를 복사하지 않았고 판단 방식(예외목록 우선, 미지 모델은 최신 계약)을 참고했다. 재배포 시 이 출처 표기를 유지할 것.
+
+## 11. 실제로 겪은 거부 사례 — `reasoning_extraction`
+
+2026-08-25, Claude Code에서 모델을 Fable 5로 바꾸자 다음 오류로 턴이 죽었다.
+
+```
+API Error: Fable 5's safeguards flagged this message
+Details: [reasoning_extraction]
+```
+
+**원인**: 이 대화가 사고(thinking) 블록을 다루는 코드를 오래 작업하고 있었다.
+`thinking: {type: "adaptive", display: "summarized"}`를 넣는 코드를 쓰고,
+참고한 오픈소스의 `_extract_preserved_thinking_blocks`·`_manage_thinking_signatures`
+같은 함수를 읽었다. 안전 분류기가 이 맥락을 **모델의 추론을 빼내려는 시도**로 오탐했다.
+
+정상적인 엔지니어링 작업이었고, 공식 안내도 *"safe, normal conversations에서도
+가끔 발생한다"* 고 말한다. 즉 **코드 버그가 아니라 분류기 오탐**이다.
+
+**교훈 두 가지**
+
+1. `reasoning_extraction`은 문서화된 거부 분류(`cyber`·`bio`·`frontier_llm` 등과 같은 집합)다.
+   사고 처리 로직을 작업할 때는 이 오탐이 나올 수 있다고 예상해야 한다.
+2. **거부는 예외 상황이 아니라 정상 경로다.** 한 모델이 거부하면 다른 모델로
+   넘어가도록 설계해야 한다. 그렇지 않으면 사용자의 작업이 통째로 날아간다.
+
+**대응**
+- 사람이 쓰는 도구(Claude Code 등)에서 걸리면 새 세션을 시작하거나 모델을 바꾼다.
+  거부를 유발한 것은 특정 메시지가 아니라 **누적된 대화 맥락**이다.
+- 우리 코드에서는 `engine/anthropic-call.ts`가 거부를 잡아 다른 모델로 한 번 더
+  시도한다(`fallbackModelFor`). Claude API의 서버측 `fallbacks` 파라미터는 최신 SDK와
+  베타 헤더가 필요하고 first-party 전용이라, 클라이언트측 폴백이 더 이식성이 높다.
+
+```
+claude-fable / mythos → claude-opus-5 → (설정 시) ANTHROPIC_MODEL_FALLBACK
+claude-opus-5         → claude-sonnet-4-6
+sonnet / haiku        → 폴백 없음 (거부가 드물다)
+```
