@@ -13,6 +13,7 @@ import {
   toExtractedElements,
   type LibraryItem,
 } from "@/components/create/createSchemas";
+import { saveWork, ensureMigrated } from "@/engine/library";
 import {
   SESSION_KEY,
   emptySession,
@@ -38,6 +39,8 @@ export default function CreatePage() {
   useEffect(() => {
     const savedMode = localStorage.getItem("mc_mode");
     document.documentElement.setAttribute("data-mode", savedMode === "light" ? "light" : "dark");
+
+    ensureMigrated();
 
     const rawSession = localStorage.getItem(SESSION_KEY);
     if (rawSession) {
@@ -191,14 +194,10 @@ export default function CreatePage() {
       setResult(payload);
       if (payload.story) {
         try {
-          localStorage.setItem("mc_project", JSON.stringify({
-            story: payload.story,
-            benchmarkName: input.benchmarkName,
-            confirmed: {},
-            snapshots: [],
-          }));
+          // 서재에 쌓는다 — 다음 이야기를 만들어도 이 작품은 남는다
+          saveWork(payload.story, { benchmarkName: input.benchmarkName, origin: "create" });
         } catch (cause: unknown) {
-          if (cause instanceof Error) setError("지도는 만들었지만 작업실 저장은 확인이 필요합니다.");
+          setError(cause instanceof Error ? cause.message : "지도는 만들었지만 저장은 확인이 필요합니다.");
         }
       }
       patch({ stage: 5 });

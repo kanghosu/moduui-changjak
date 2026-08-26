@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Story } from "@/engine/schema";
+import { localWorkStore, ensureMigrated, type Work, type CurrentProject } from "@/engine/library";
 
 interface Project {
   story: Story;
@@ -19,9 +20,12 @@ export default function Library() {
   const [theme, setTheme] = useState("paper");
   const [ready, setReady] = useState(false);
   const [flash, setFlash] = useState("");
+  const [works, setWorks] = useState<Work[]>([]);
 
   useEffect(() => {
     try {
+      ensureMigrated();
+      setWorks(localWorkStore.list());
       const raw = localStorage.getItem("mc_project");
       if (raw) {
         const p = JSON.parse(raw);
@@ -38,6 +42,23 @@ export default function Library() {
     } catch { /* 무시 */ }
     setReady(true);
   }, []);
+
+  /** 작품을 작업실이 보는 현재 슬롯에 올린다 */
+  function openWork(w: Work) {
+    const current: CurrentProject = {
+      story: w.story, benchmarkName: w.benchmarkName, confirmed: {}, snapshots: [], workId: w.id,
+    };
+    localStorage.setItem("mc_project", JSON.stringify(current));
+    location.href = "/studio";
+  }
+
+  function removeWork(w: Work) {
+    if (!confirm(`「${w.title}」을(를) 서재에서 지울까요? 되돌릴 수 없어요.`)) return;
+    localWorkStore.remove(w.id);
+    setWorks(localWorkStore.list());
+    setFlash(`「${w.title}」을(를) 지웠어요`);
+    setTimeout(() => setFlash(""), 3000);
+  }
 
   function restore(ts: number) {
     if (!proj) return;
@@ -68,7 +89,7 @@ export default function Library() {
 
         {flash && <p className="pill pill-ok mb-4 inline-block">✓ {flash}</p>}
 
-        {!proj && draftLen === 0 && (
+        {works.length === 0 && !proj && draftLen === 0 && (
           <div className="card p-10 text-center">
             <p className="mb-2 text-lg font-bold">아직 서재가 비어 있어요</p>
             <p className="mb-4 text-sm" style={{ color: "var(--c-sub)" }}>
@@ -76,6 +97,36 @@ export default function Library() {
             </p>
             <Link href="/" className="btn-amber inline-block">🎬 첫 이야기 시작하기</Link>
           </div>
+        )}
+
+        {works.length > 0 && (
+          <section className="mb-5">
+            <div className="mb-2 flex flex-wrap items-baseline gap-2">
+              <h2 className="text-base font-bold">내 이야기 {works.length}편</h2>
+              <span className="text-xs" style={{ color: "var(--c-dim)" }}>
+                새 이야기를 만들어도 여기 있는 작품은 지워지지 않아요.
+              </span>
+              <span className="flex-1" />
+              <Link href="/create" className="btn-ghost !px-2.5 !py-1 text-xs">+ 새 이야기</Link>
+            </div>
+            <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {works.map((w) => (
+                <li key={w.id} className="card p-4">
+                  <h3 className="mb-1 text-sm font-bold leading-snug">{w.title}</h3>
+                  <p className="mb-2 line-clamp-2 text-xs" style={{ color: "var(--c-sub)" }}>{w.story.logline}</p>
+                  <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                    <span className="pill pill-muted">{fmt(w.updatedAt)}</span>
+                    {w.benchmarkName && <span className="pill pill-line">뼈대: {w.benchmarkName}</span>}
+                    {w.story.hookNote && <span className="pill pill-ok">후크 ✓</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => openWork(w)} className="btn-amber text-xs">작업실에서 열기</button>
+                    <button onClick={() => removeWork(w)} className="btn-ghost text-xs">지우기</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {proj && (
