@@ -30,7 +30,17 @@ export type BenchmarkSummary = {
   readonly matchedBlocks: readonly number[];
 };
 
-const STOP_TOKENS = new Set(["주인공", "이야기", "영화", "장면", "사람", "자신", "것", "그리고", "대한", "통해", "위해"]);
+// 불용어 — 매칭 근거로 인용됐을 때 아무 정보도 주지 못하는 말들.
+// (2026-08-25: "'하나', '손에' 단서와 유사합니다" 같은 무의미한 근거가 나와 보강)
+const STOP_TOKENS = new Set([
+  "주인공", "이야기", "영화", "장면", "사람", "자신", "것", "그리고", "대한", "통해", "위해",
+  "하나", "둘", "여기", "거기", "저기", "이것", "그것", "저것", "무엇", "누구", "어디",
+  "너무", "정말", "진짜", "매우", "아주", "조금", "약간", "많이", "다시", "계속", "먼저",
+  "있어", "있어요", "있는", "있다", "없어", "없는", "했어", "한다", "하는", "하고", "해서",
+  "이런", "그런", "저런", "같은", "같이", "때문", "그때", "지금", "나중", "다음",
+  "생각", "느낌", "기분", "부분", "정도", "경우", "상황", "모습", "순간",
+  "손에", "눈에", "머리", "얼굴", "마음",
+]);
 const PARTICLES = ["에서", "에게", "으로", "처럼", "까지", "부터", "보다", "을", "를", "은", "는", "이", "가", "에", "로", "와", "과", "도", "만", "의"];
 const ROOT = process.cwd();
 let cache: { readonly at: number; readonly items: readonly BenchmarkRecord[] } | null = null;
@@ -44,7 +54,12 @@ function tokenize(value: string): readonly string[] {
   return [...new Set(words.flatMap((word) => {
     const particle = PARTICLES.find((candidate) => word.endsWith(candidate) && word.length - candidate.length >= 2);
     return particle ? [word, word.slice(0, -particle.length)] : [word];
-  }).filter((word) => !STOP_TOKENS.has(word)))];
+  }).filter((word) => {
+    if (STOP_TOKENS.has(word)) return false;
+    // "주인공이"처럼 조사가 붙은 형태도 어근이 불용어면 함께 제외한다
+    const particle = PARTICLES.find((p) => word.endsWith(p) && word.length - p.length >= 2);
+    return !(particle && STOP_TOKENS.has(word.slice(0, -particle.length)));
+  }))];
 }
 
 async function loadBenchmarks(): Promise<readonly BenchmarkRecord[]> {

@@ -197,6 +197,22 @@ export function CreateView({
                     </div>
                     <Button type="button" onClick={onOpenStudio}>작업실에서 다듬기</Button>
                   </Card>
+
+                  {/* 스토리툰 전환 — 회의(2026-08-19) 확정 결제 지점. 지도를 본 직후가 전환이 가장 높다. */}
+                  <Card tone="elevated" className="flex flex-wrap items-center justify-between gap-ds-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-ds-2">
+                        <h3 className="text-ds-h3 font-bold text-text">이 이야기를 스토리툰으로 만들어 보실래요?</h3>
+                        <Chip variant="secondary">준비 중</Chip>
+                      </div>
+                      <p className="mt-ds-1 text-ds-body-sm text-muted">
+                        완성한 이야기 지도를 장면과 컷으로 나눠 웹툰처럼 펼칩니다.
+                      </p>
+                    </div>
+                    <Button type="button" variant="quiet" disabled title="준비 중입니다">
+                      곧 열려요
+                    </Button>
+                  </Card>
                 </>
               ) : (
                 <Card tone="surface" className="grid gap-ds-3 p-ds-8 text-center">
