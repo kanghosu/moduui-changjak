@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import {
   QUESTION_POOL, MAX_QUESTIONS, missingQuestions,
   type ExtractedElements, type ElementKey,
@@ -83,10 +84,14 @@ export async function POST(req: NextRequest) {
       const once = async (extra = "") => {
         const resp = await client.messages.create({
           model: model!,
-          max_tokens: 1200,
+          ...buildRequestParams(model!, { maxTokens: 1200 }),
           system,
           messages: [{ role: "user", content: utterance + extra }],
         });
+        // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
+        // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+        const _refusal = refusalOf(resp);
+        if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
         const text = resp.content
           .filter((b): b is { type: "text"; text: string } => b.type === "text")
           .map((b) => b.text)

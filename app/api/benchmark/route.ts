@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { promises as fs } from "fs";
 import path from "path";
 import { validateStructure, type Story } from "@/engine/schema";
@@ -195,10 +196,14 @@ ${examples}
     const callOnce = async (extra = ""): Promise<Story> => {
       const resp = await client.messages.create({
         model,
-        max_tokens: 8000,
+        ...buildRequestParams(model!, { maxTokens: 8000 }),
         system,
         messages: [{ role: "user", content: `영화: ${title}${body.year ? ` (${body.year})` : ""}${body.genre ? ` / 장르: ${body.genre}` : ""}${body.info ? `\n참고: ${body.info}` : ""}${extra}` }],
       });
+      // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
+      // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+      const _refusal = refusalOf(resp);
+      if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
       const text = resp.content
         .filter((b): b is { type: "text"; text: string } => b.type === "text")
         .map((b) => b.text)

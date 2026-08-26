@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
@@ -70,10 +71,14 @@ async function callAnthropic(sceneText: string, blockGuide: string): Promise<rea
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
     model,
-    max_tokens: 1_800,
+    ...buildRequestParams(model!, { maxTokens: 1_800 }),
     system: buildSystemPrompt(blockGuide, conceptContext),
     messages: [{ role: "user", content: `장면:\n${sceneText}` }],
   });
+  // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
+  // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+  const _refusal = refusalOf(response);
+  if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
   const text = response.content
     .filter((block): block is { type: "text"; text: string } => block.type === "text")
     .map((block) => block.text)
