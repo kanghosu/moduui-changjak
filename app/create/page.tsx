@@ -1,25 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { type ApiResult } from "@/components/BenchmarkResult";
 import { CreateView } from "@/components/create/CreateView";
+import { useCreatePageEffects } from "@/components/create/useCreatePageEffects";
 import {
   ExtractResponseSchema,
-  LibraryResponseSchema,
   LoglineResponseSchema,
   apiMessage,
   isApiResult,
   toExtractedElements,
   type LibraryItem,
 } from "@/components/create/createSchemas";
-import { saveWork, ensureMigrated } from "@/engine/library";
+import { saveWork } from "@/engine/library";
 import {
   SESSION_KEY,
   appendLoglineHistory,
   emptySession,
   mergedElements,
+  missingQuestions,
   sessionToGenerateInput,
+  spokenElements,
   type CreationSession,
 } from "@/engine/creation";
 
@@ -35,57 +37,8 @@ export default function CreatePage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ApiResult | null>(null);
   const [library, setLibrary] = useState<readonly LibraryItem[]>([]);
-  const saveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    const savedMode = localStorage.getItem("mc_mode");
-    document.documentElement.setAttribute("data-mode", savedMode === "light" ? "light" : "dark");
-
-    ensureMigrated();
-
-    const rawSession = localStorage.getItem(SESSION_KEY);
-    if (rawSession) {
-      try {
-        const parsed: unknown = JSON.parse(rawSession);
-        if (typeof parsed === "object" && parsed !== null) setSession({ ...emptySession(), ...parsed });
-      } catch (cause: unknown) {
-        setError(cause instanceof Error ? "저장된 작업을 읽지 못했습니다." : "저장된 작업을 읽지 못했습니다.");
-      }
-    }
-
-    async function loadLibrary(): Promise<void> {
-      try {
-        const response = await fetch("/api/benchmark");
-        const payload: unknown = await response.json();
-        const parsed = LibraryResponseSchema.safeParse(payload);
-        if (parsed.success) setLibrary(parsed.data.list);
-      } catch (cause: unknown) {
-        if (cause instanceof Error) return;
-        throw cause;
-      }
-    }
-
-    void loadLibrary();
-  }, []);
-
-  useEffect(() => {
-    if (saveRef.current) clearTimeout(saveRef.current);
-    saveRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      } catch (cause: unknown) {
-        if (cause instanceof Error) setError("자동 저장을 사용할 수 없습니다.");
-      }
-    }, 800);
-
-    return () => {
-      if (saveRef.current) clearTimeout(saveRef.current);
-    };
-  }, [session]);
-
-  useEffect(() => {
-    setQuestionIndex((current) => Math.min(current, Math.max(session.questions.length - 1, 0)));
-  }, [session.questions.length]);
+  useCreatePageEffects({ session, setError, setLibrary, setQuestionIndex, setSession });
 
   const posterOf = (title: string): string | null => {
     const item = library.find((candidate) => normalise(candidate.title) === normalise(title));
@@ -140,10 +93,13 @@ export default function CreatePage() {
       if (!response.ok) throw new Error(apiMessage(payload, "정리 실패"));
       const parsed = ExtractResponseSchema.safeParse(payload);
       if (!parsed.success) throw new Error("추출 응답 형식이 올바르지 않습니다.");
+      const fresh = toExtractedElements(parsed.data.elements);
+      const spoken = spokenElements(session);
+      const elements = { ...fresh, ...spoken };
       patch({
-        elements: toExtractedElements(parsed.data.elements),
-        questions: parsed.data.questions,
-        answers: {},
+        elements,
+        questions: missingQuestions(elements),
+        answers: session.answers,
         stage: 2,
       });
       setQuestionIndex(0);
@@ -259,7 +215,12 @@ export default function CreatePage() {
       })}
       onSubmitIdea={() => void runExtract()}
       onReset={resetAll}
-      onElementChange={(key, value) => patch({ elements: { ...session.elements, [key]: value } })}
+      onElementChange={(key, value) => patch({
+        elements: {
+          ...session.elements,
+          [key]: { value, confidence: "high", evidence: value, source: "user" },
+        },
+      })}
       onAnswerChange={(questionId, value) => patch({ answers: { ...session.answers, [questionId]: value } })}
       onPreviousQuestion={() => setQuestionIndex((current) => Math.max(current - 1, 0))}
       onNextQuestion={nextQuestion}

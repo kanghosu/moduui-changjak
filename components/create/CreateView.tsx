@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { ProgressNavigator, type ProgressStep } from "@/components/ProgressNavigator";
-import type { CreationQuestion, CreationSession, ExtractedElements, LoglineOption } from "@/engine/creation";
+import type { CreationQuestion, CreationSession, ElementKey, LoglineOption } from "@/engine/creation";
 
 const STAGE_NAMES = ["쏟아내기", "뼈대 찾기", "이야기 고르기", "깊게 만들기", "이야기 지도"] as const;
 const STAGE_NEXT_ACTIONS = [
@@ -40,7 +40,7 @@ export interface CreateViewProps {
   readonly onVoiceText: (value: string) => void;
   readonly onSubmitIdea: () => void;
   readonly onReset: () => void;
-  readonly onElementChange: (key: string, value: string) => void;
+  readonly onElementChange: (key: ElementKey, value: string) => void;
   readonly onAnswerChange: (questionId: string, value: string) => void;
   readonly onPreviousQuestion: () => void;
   readonly onNextQuestion: (value: string) => void;

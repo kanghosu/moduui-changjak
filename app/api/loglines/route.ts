@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callModelJson, RefusalError } from "@/engine/anthropic-call";
-import type { ExtractedElements, LoglineOption } from "@/engine/creation";
+import { normalizeElements, type ExtractedElements, type LoglineOption } from "@/engine/creation";
 import { matchBenchmarks, libraryTitles } from "@/engine/matcher";
 import { MODEL_MAIN } from "@/engine/models";
 
@@ -8,10 +8,11 @@ export const runtime = "nodejs";
 
 // 키 없을 때: 템플릿 + 휴리스틱 벤치마크로 3안 골격 생성
 function mockLoglines(utterance: string, el: ExtractedElements): LoglineOption[] {
-  const hero = el.heroDesc || el.heroName || "평범한 주인공";
-  const event = el.premise || el.scene || "뜻밖의 사건";
-  const goal = el.theme || el.ending || "진짜 원하는 것";
-  const { matches } = matchBenchmarks([utterance, Object.values(el).join(" ")].join(" "));
+  const hero = el.heroDesc?.value || el.heroName?.value || "평범한 주인공";
+  const event = el.premise?.value || el.scene?.value || "뜻밖의 사건";
+  const goal = el.theme?.value || el.ending?.value || "진짜 원하는 것";
+  const elementText = Object.values(el).map((element) => element?.value || "").join(" ");
+  const { matches } = matchBenchmarks([utterance, elementText].join(" "));
   const bm = (i: number) => matches[i % Math.max(matches.length, 1)]?.title || "기생충";
 
   return [
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "잘못된 요청 본문" }, { status: 400 });
   }
   const utterance = body?.utterance?.trim() || "";
-  const elements = body?.elements || {};
+  const elements = normalizeElements(body?.elements);
   if (!utterance && Object.keys(elements).length === 0) {
     return NextResponse.json({ error: "발화 또는 추출 요소가 필요합니다." }, { status: 400 });
   }

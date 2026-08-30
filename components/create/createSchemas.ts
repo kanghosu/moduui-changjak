@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ApiResult } from "@/components/BenchmarkResult";
-import { MAX_QUESTIONS, type ExtractedElements } from "@/engine/creation";
+import { MAX_QUESTIONS, normalizeElements, type ExtractedElements } from "@/engine/creation";
 
 const QUESTION_ELEMENT_KEYS = [
   "scene",
@@ -27,8 +27,16 @@ const CreationQuestionSchema = z.object({
   priority: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 });
 
+const ExtractedElementSchema = z.object({
+  value: z.string(),
+  evidence: z.string().optional(),
+  confidence: z.enum(["high", "low"]),
+  unknown: z.boolean().optional(),
+  source: z.enum(["user", "extracted"]).optional(),
+});
+
 export const ExtractResponseSchema = z.object({
-  elements: z.record(z.string(), z.string()),
+  elements: z.record(z.string(), z.union([z.string(), ExtractedElementSchema])),
   questions: z.array(CreationQuestionSchema).max(MAX_QUESTIONS),
 });
 
@@ -65,11 +73,6 @@ export function isApiResult(payload: unknown): payload is ApiResult {
     && typeof payload.engine === "string";
 }
 
-export function toExtractedElements(values: Record<string, string>): ExtractedElements {
-  const elements: ExtractedElements = {};
-  for (const key of QUESTION_ELEMENT_KEYS) {
-    const value = values[key];
-    if (value) elements[key] = value;
-  }
-  return elements;
+export function toExtractedElements(values: unknown): ExtractedElements {
+  return normalizeElements(values);
 }

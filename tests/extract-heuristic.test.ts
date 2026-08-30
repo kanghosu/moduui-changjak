@@ -33,8 +33,10 @@ test("장면은 내용이 잘리지 않고 보존된다", () => {
     "꿈에서 본 장면이 하나 있어요. 옥상에서 주인공이 비리 서류를 쥐고 망설이는 장면인데 강렬해요."
   );
   assert.ok(el.scene, "장면을 추출하지 못했다");
-  assert.ok(el.scene!.includes("옥상"), "장면 내용이 잘렸다 — 첫 문장만 남았을 가능성");
-  assert.ok(el.scene!.includes("비리"), "장면 내용이 잘렸다");
+  assert.ok(el.scene?.value.includes("옥상"), "장면 내용이 잘렸다 — 첫 문장만 남았을 가능성");
+  assert.ok(el.scene?.value.includes("비리"), "장면 내용이 잘렸다");
+  assert.equal(el.scene?.confidence, "low", "휴리스틱 추출의 신뢰도가 low가 아니다");
+  assert.equal(el.scene?.evidence, el.scene?.value, "매칭된 장면 원문이 evidence로 보존되지 않았다");
 });
 
 test("질문은 어떤 입력에도 10개를 넘지 않는다", () => {

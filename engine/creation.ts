@@ -21,7 +21,22 @@ export type ElementKey =
   | "choice"     // 주인공의 갈림길(선택지)
   | "hook";      // 나만의 차별점
 
-export type ExtractedElements = Partial<Record<ElementKey, string>>;
+export type ElementConfidence = "high" | "low";
+export type ElementSource = "user" | "extracted";
+
+export interface ExtractedElement {
+  /** 뽑아낸 값. unknown이면 빈 문자열일 수 있다 */
+  value: string;
+  /** 원문에서 이 값의 근거가 된 구간. 없으면 근거 없이 만들어진 값이다 */
+  evidence?: string;
+  confidence: ElementConfidence;
+  /** 사용자가 "없음/모름"이라고 명시했다. 다시 묻지 않는다 */
+  unknown?: boolean;
+  /** 이 값이 어디서 왔나. user는 사용자가 직접 말하거나 답한 것이라 재추출이 덮지 않는다 */
+  source: ElementSource;
+}
+
+export type ExtractedElements = Partial<Record<ElementKey, ExtractedElement>>;
 
 /* ── 질문 풀 (최대 10, 초과 금지) ──────────────── */
 // 정본: knowledge/method/question-pool.md (김태원 검수 대상). 이 배열은 그 문서와 1:1.
@@ -48,12 +63,97 @@ export const QUESTION_POOL: CreationQuestion[] = [
 
 export const MAX_QUESTIONS = 10;
 
+const ELEMENT_KEYS: readonly ElementKey[] = QUESTION_POOL.map((question) => question.elementKey);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isElementConfidence(value: unknown): value is ElementConfidence {
+  return value === "high" || value === "low";
+}
+
+function isElementSource(value: unknown): value is ElementSource {
+  return value === "user" || value === "extracted";
+}
+
+export function normalizeElements(raw: unknown): ExtractedElements {
+  const normalized: ExtractedElements = {};
+  if (!isRecord(raw)) return normalized;
+
+  for (const key of ELEMENT_KEYS) {
+    const candidate = raw[key];
+    if (typeof candidate === "string") {
+      if (candidate.trim()) normalized[key] = { value: candidate, confidence: "high", source: "user" };
+      continue;
+    }
+
+    if (!isRecord(candidate)) continue;
+    const value = candidate.value;
+    const confidence = candidate.confidence;
+    const evidence = candidate.evidence;
+    const unknown = candidate.unknown;
+    const source = candidate.source;
+    if (typeof value !== "string" || !isElementConfidence(confidence)) continue;
+    if (evidence !== undefined && typeof evidence !== "string") continue;
+    if (unknown !== undefined && typeof unknown !== "boolean") continue;
+    if (source !== undefined && !isElementSource(source)) continue;
+    if (!value.trim() && unknown !== true) continue;
+
+    const element: ExtractedElement = { value, confidence, source: source ?? "user" };
+    if (evidence !== undefined) element.evidence = evidence;
+    if (unknown !== undefined) element.unknown = unknown;
+    normalized[key] = element;
+  }
+
+  return normalized;
+}
+
+export function spokenElements(s: CreationSession): ExtractedElements {
+  const spoken: ExtractedElements = {};
+  const normalized = normalizeElements(s.elements);
+
+  for (const key of ELEMENT_KEYS) {
+    const element = normalized[key];
+    if (element?.source === "user") spoken[key] = element;
+  }
+
+  for (const question of s.questions) {
+    const answer = s.answers[question.id];
+    if (answer === undefined) continue;
+
+    const trimmedAnswer = answer.trim();
+    const unknown = trimmedAnswer === "" || /^없(음|어요?)$/.test(trimmedAnswer);
+    spoken[question.elementKey] = {
+      value: unknown ? "" : trimmedAnswer,
+      confidence: "high",
+      evidence: answer,
+      ...(unknown ? { unknown: true } : {}),
+      source: "user",
+    };
+  }
+
+  return spoken;
+}
+
 // 추출로 채워지지 않은 요소만 골라 질문한다 (priority 순, 상한 강제)
 export function missingQuestions(elements: ExtractedElements, cap = MAX_QUESTIONS): CreationQuestion[] {
   return QUESTION_POOL
-    .filter((q) => !(elements[q.elementKey] || "").trim())
+    .filter((q) => {
+      const element = elements[q.elementKey];
+      return !element || (element.unknown !== true && element.value.trim() === "");
+    })
     .sort((a, b) => a.priority - b.priority)
     .slice(0, Math.min(cap, MAX_QUESTIONS));
+}
+
+export function repeatQuestionRate(
+  elements: ExtractedElements,
+  questions: readonly CreationQuestion[],
+): number {
+  if (questions.length === 0) return 0;
+  const repeatedQuestions = questions.filter((question) => Boolean(elements[question.elementKey]?.evidence?.trim()));
+  return repeatedQuestions.length / questions.length;
 }
 
 /* ── 로그라인 3안 ─────────────────────────────── */
@@ -100,10 +200,17 @@ export function emptySession(): CreationSession {
 
 // 질문 답변을 요소에 합친다
 export function mergedElements(s: CreationSession): ExtractedElements {
-  const merged: ExtractedElements = { ...s.elements };
+  const merged = normalizeElements(s.elements);
   for (const q of s.questions) {
     const a = (s.answers[q.id] || "").trim();
-    if (a && !/^없(음|어요?)$/.test(a)) merged[q.elementKey] = a;
+    const unknown = !a || /^없(음|어요?)$/.test(a);
+    merged[q.elementKey] = {
+      value: unknown ? "" : a,
+      confidence: "high",
+      evidence: a,
+      ...(unknown ? { unknown: true } : {}),
+      source: "user",
+    };
   }
   return merged;
 }
@@ -121,23 +228,23 @@ export function sessionToGenerateInput(s: CreationSession): GenerateInput {
     .join("\n");
   const ideaNote = [
     s.utterance.trim(),
-    el.scene ? `\n[인상적인 장면] ${el.scene}` : "",
+    el.scene?.value ? `\n[인상적인 장면] ${el.scene.value}` : "",
     qa ? `\n[보충 답변]\n${qa}` : "",
     s.deepenNote.trim() ? `\n[심화 메모]\n${s.deepenNote.trim()}` : "",
   ].join("\n").trim();
 
   return {
     logline: opt?.logline || "",
-    premise: el.premise || opt?.premise || "",
-    genre: el.genre || "",
+    premise: el.premise?.value || opt?.premise || "",
+    genre: el.genre?.value || "",
     target: "",
-    tone: el.tone || "",
-    hookNote: s.hookNote.trim() || el.hook || "",
-    benchmarkName: opt?.benchmarkTitle || el.benchmark || undefined,
+    tone: el.tone?.value || "",
+    hookNote: s.hookNote.trim() || el.hook?.value || "",
+    benchmarkName: opt?.benchmarkTitle || el.benchmark?.value || undefined,
     ideaNote,
-    theme: el.theme || "",
-    heroName: el.heroName || "",
-    heroWant: el.heroWant || "",
-    heroNeed: el.heroNeed || "",
+    theme: el.theme?.value || "",
+    heroName: el.heroName?.value || "",
+    heroWant: el.heroWant?.value || "",
+    heroNeed: el.heroNeed?.value || "",
   };
 }

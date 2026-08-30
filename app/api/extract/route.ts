@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import {
   QUESTION_POOL, MAX_QUESTIONS, missingQuestions,
+  normalizeElements,
   type ExtractedElements, type ElementKey,
 } from "@/engine/creation";
 import { scoreBenchmarks } from "@/engine/matcher";
@@ -23,13 +24,31 @@ function extractJson(text: string): unknown {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function sanitize(raw: unknown): ExtractedElements {
   const out: ExtractedElements = {};
-  if (raw && typeof raw === "object") {
-    for (const k of ELEMENT_KEYS) {
-      const v = (raw as Record<string, unknown>)[k];
-      if (typeof v === "string" && v.trim() && v.trim() !== "없음") out[k] = v.trim();
+  if (!isRecord(raw)) return out;
+
+  const normalized = normalizeElements(raw);
+  for (const k of ELEMENT_KEYS) {
+    const rawValue = raw[k];
+    if (typeof rawValue === "string") {
+      const value = rawValue.trim();
+      if (!value) continue;
+      out[k] = value === "없음"
+        ? { value: "", confidence: "high", unknown: true, source: "extracted" }
+        : { value, confidence: "high", source: "extracted" };
+      continue;
     }
+
+    const element = normalized[k];
+    if (!element) continue;
+    out[k] = element.value.trim() === "없음"
+      ? { ...element, value: "", unknown: true, source: "extracted" }
+      : { ...element, source: "extracted" };
   }
   return out;
 }

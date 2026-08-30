@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { Input } from "@/components/ui/Input";
-import type { CreationQuestion, ExtractedElements } from "@/engine/creation";
+import type { CreationQuestion, ElementKey, ExtractedElements } from "@/engine/creation";
 
-const ELEMENT_LABEL: Record<string, string> = {
+const ELEMENT_LABEL: Record<ElementKey, string> = {
   scene: "인상적인 장면",
   heroDesc: "주인공",
   heroName: "주인공 이름",
@@ -24,13 +24,17 @@ const ELEMENT_LABEL: Record<string, string> = {
   hook: "나만의 차별점",
 };
 
+function isElementKey(value: string): value is ElementKey {
+  return value in ELEMENT_LABEL;
+}
+
 export interface QuestionStageProps {
   readonly elements: ExtractedElements;
   readonly questions: readonly CreationQuestion[];
   readonly answers: Readonly<Record<string, string>>;
   readonly questionIndex: number;
   readonly loading: boolean;
-  readonly onElementChange: (key: string, value: string) => void;
+  readonly onElementChange: (key: ElementKey, value: string) => void;
   readonly onAnswerChange: (questionId: string, value: string) => void;
   readonly onPreviousQuestion: () => void;
   readonly onNextQuestion: (value: string) => void;
@@ -53,7 +57,10 @@ export function QuestionStage({
   questionIndex,
   questions,
 }: QuestionStageProps) {
-  const visibleElements = Object.entries(elements).filter(([, value]) => Boolean(value));
+  const visibleElements = Object.entries(elements).flatMap(([key, element]) => {
+    if (!isElementKey(key) || !element || !element.value.trim()) return [];
+    return [{ key, element }];
+  });
   const question = questions[questionIndex];
   const answer = question ? answers[question.id] ?? "" : "";
   const remaining = Math.max(questions.length - questionIndex - 1, 0);
@@ -75,11 +82,11 @@ export function QuestionStage({
             <p className="mt-ds-1 text-ds-label text-muted">당신의 문장을 덮지 않고, 편집 가능한 메모로 남겨두었어요.</p>
           </div>
           <div className="grid gap-ds-3 sm:grid-cols-2">
-            {visibleElements.map(([key, value]) => (
+            {visibleElements.map(({ key, element }) => (
               <Input
                 key={key}
                 label={ELEMENT_LABEL[key] ?? key}
-                value={value}
+                value={element.value}
                 onChange={(event) => onElementChange(key, event.currentTarget.value)}
               />
             ))}
@@ -89,7 +96,7 @@ export function QuestionStage({
         <p className="text-ds-body-sm text-muted">아직 잡힌 게 많지 않아요. 아래 한 가지씩 답하면 됩니다.</p>
       )}
 
-      {elements.scene ? <ScenePlacement sceneText={elements.scene} /> : null}
+      {elements.scene?.value.trim() ? <ScenePlacement sceneText={elements.scene.value} /> : null}
 
       {question ? (
         <Card tone="elevated" className="grid gap-ds-5 p-ds-6">
