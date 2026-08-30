@@ -16,6 +16,7 @@ import {
 import { saveWork, ensureMigrated } from "@/engine/library";
 import {
   SESSION_KEY,
+  appendLoglineHistory,
   emptySession,
   mergedElements,
   sessionToGenerateInput,
@@ -167,7 +168,12 @@ export default function CreatePage() {
       if (!response.ok) throw new Error(apiMessage(payload, "뼈대 생성 실패"));
       const parsed = LoglineResponseSchema.safeParse(payload);
       if (!parsed.success) throw new Error("로그라인 응답 형식이 올바르지 않습니다.");
-      patch({ loglineOptions: parsed.data.options, chosenIndex: null, stage: 3 });
+      patch({
+        loglineOptions: parsed.data.options,
+        loglineHistory: appendLoglineHistory(session.loglineHistory, session.loglineOptions),
+        chosenIndex: null,
+        stage: 3,
+      });
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : "뼈대 생성 중 오류가 발생했습니다.");
     } finally {
@@ -270,6 +276,17 @@ export default function CreatePage() {
         patch({ stage: 4 });
       }}
       onRegenerateLoglines={() => void runLoglines()}
+      onRestorePreviousLoglines={() => setSession((current) => {
+        const history = current.loglineHistory ?? [];
+        const previous = history[history.length - 1];
+        if (!previous) return current;
+        return {
+          ...current,
+          loglineOptions: previous,
+          loglineHistory: history.slice(0, -1),
+          chosenIndex: null,
+        };
+      })}
       onBackToQuestions={() => goTo(2)}
       onDeepenNoteChange={(deepenNote) => patch({ deepenNote })}
       onHookNoteChange={(hookNote) => patch({ hookNote })}

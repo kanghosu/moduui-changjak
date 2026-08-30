@@ -6,7 +6,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   makeWork, titleFrom, sortWorks, parseWorks, migrateLegacy,
-  type Work, type WorkStore,
+  syncWorkFromProject,
+  type CurrentProject, type Work, type WorkStore,
 } from "../engine/library.ts";
 import type { Story } from "../engine/schema.ts";
 
@@ -88,4 +89,67 @@ test("빈·손상된 옛 슬롯은 무시한다", () => {
   assert.equal(migrateLegacy([], null).length, 0);
   assert.equal(migrateLegacy([], "깨진 값").length, 0);
   assert.equal(migrateLegacy([], '{"story":{}}').length, 0, "블록 없는 story를 작품으로 만들면 안 된다");
+});
+
+test("작업실 프로젝트를 workId로 찾아 이야기·스냅샷·확정 상태를 동기화한다", () => {
+  const original = makeWork(story("처음 버전"), { id: "work-1", now: 100 });
+  const nextStory = story("작업실에서 편집한 버전");
+  const snapshots = [{ ts: 200, story: story("복원할 버전") }];
+  const confirmed = { 13: true };
+  const originals = { 13: "처음 초안" };
+  const store = memoryStore([original]);
+  const project: CurrentProject = {
+    story: nextStory,
+    snapshots,
+    confirmed,
+    originals,
+    workId: original.id,
+  };
+
+  syncWorkFromProject(project, store);
+
+  const saved = store.get(original.id);
+  assert.ok(saved);
+  assert.equal(saved.story, nextStory);
+  assert.deepEqual(saved.snapshots, snapshots);
+  assert.deepEqual(saved.confirmed, confirmed);
+  assert.deepEqual(saved.originals, originals);
+  assert.ok(saved.updatedAt >= original.updatedAt);
+});
+
+test("workId가 없는 작업실 프로젝트는 서재를 건드리지 않는다", () => {
+  const original = makeWork(story("보존할 버전"), { id: "work-2", now: 100 });
+  const store = memoryStore([original]);
+  const project: CurrentProject = {
+    story: story("연결되지 않은 편집"),
+    snapshots: [],
+    confirmed: {},
+  };
+
+  syncWorkFromProject(project, store);
+
+  assert.deepEqual(store.get(original.id), original);
+});
+
+test("서재에서 삭제된 workId는 동기화할 대상을 찾지 못해도 조용히 끝난다", () => {
+  const store = memoryStore();
+  const project: CurrentProject = {
+    story: story("삭제된 작품"),
+    snapshots: [],
+    confirmed: {},
+    workId: "deleted-work",
+  };
+
+  assert.doesNotThrow(() => syncWorkFromProject(project, store));
+  assert.deepEqual(store.list(), []);
+});
+
+test("스냅샷·확정 상태가 없는 옛 Work도 읽을 수 있다", () => {
+  const legacy = makeWork(story("옛 형식 작품"), { id: "legacy-work" });
+  const parsed = parseWorks(JSON.stringify([legacy]));
+
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0]?.id, legacy.id);
+  assert.equal(parsed[0]?.snapshots, undefined);
+  assert.equal(parsed[0]?.confirmed, undefined);
 });

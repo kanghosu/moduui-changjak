@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
   const hit = findInLibrary(title);
   if (hit) {
     return NextResponse.json({
-      story: hit,
+      story: { ...hit, origin: "master" },
       issues: validateStructure(hit),
       engine: "library",
       mode: "benchmark",
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
   const aiHit = findIn(await loadAiLibrary(), title);
   if (aiHit) {
     return NextResponse.json({
-      story: aiHit,
+      story: { ...aiHit, origin: "ai" },
       issues: validateStructure(aiHit),
       engine: "ai-library",
       mode: "benchmark",
@@ -218,6 +218,7 @@ ${examples}
     } catch {
       story = await callOnce("\n\n반드시 24개 블록을 가진 JSON 객체 하나만 출력하라.");
     }
+    story.origin = "ai";
     if (!Array.isArray(story.notes)) story.notes = [];
     story.notes.unshift(`[AI 자동 분석] '${title}'를 거장 템플릿 형식으로 자동 생성 (Anthropic ${model}).`);
 

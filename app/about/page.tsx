@@ -6,7 +6,7 @@ import { Chip } from "@/components/ui/Chip";
 export const metadata: Metadata = {
   title: "모두의 창작 — 떠들면 이야기가 된다",
   description:
-    "검증된 방법론(4막·24블록 「욕망의 레시피」)으로, 자유롭게 쏟아낸 말이 완성 가능한 이야기 구조가 됩니다. 플롯은 AI, 후크는 당신.",
+    "4막·24블록 「욕망의 레시피」 방법론으로, 자유롭게 쏟아낸 말이 완성 가능한 이야기 구조가 됩니다. 플롯은 AI, 후크는 당신.",
 };
 
 const PROBLEMS = [
@@ -27,14 +27,14 @@ const PROBLEMS = [
 const PRINCIPLES = [
   {
     label: "질문을 먼저 주지 않는다",
-    body: "일단 자유롭게 떠들면(텍스트든 음성이든), 이미 말한 것은 다시 묻지 않고 비어 있는 것만 묻습니다. 질문은 열 개를 넘지 않습니다.",
+    body: "일단 자유롭게 떠들면(텍스트든 음성이든), 이미 말한 것은 다시 묻지 않는 것을 목표로, 비어 있는 것만 묻습니다. 질문은 열 개를 넘지 않습니다.",
   },
   {
     label: "플롯은 AI, 후크는 당신",
     body: "구조·인과·플롯 설계는 엔진이 맡고, 이야기를 특별하게 만드는 차별화·감정·후크는 반드시 당신의 입력에서 나옵니다.",
   },
   {
-    label: "발명이 아니라 검증된 방법론",
+    label: "발명이 아니라 기존 방법론",
     body: "작법을 새로 만들지 않았습니다. 김태원 「욕망의 레시피」 4막·24블록(저작권 C-2013-022120)을 엔진으로 옮겼습니다.",
   },
 ];
@@ -73,8 +73,8 @@ export default function AboutPage() {
             떠들면 이야기가 된다
           </h1>
           <p className="max-w-2xl text-ds-body leading-relaxed text-muted">
-            신인 창작자가 &ldquo;내 글&rdquo;이라는 소유감을 잃지 않으면서, 검증된 방법론
-            <span className="text-text"> 4막·24블록 「욕망의 레시피」</span>로 완성 가능한
+            신인 창작자가 &ldquo;내 글&rdquo;이라는 소유감을 잃지 않으면서,
+            <span className="text-text"> 4막·24블록 「욕망의 레시피」 방법론</span>으로 완성 가능한
             이야기 구조를 얻는 도구입니다.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-ds-3">
@@ -82,7 +82,7 @@ export default function AboutPage() {
               href="/create"
               className="inline-flex min-h-ds-10 items-center justify-center rounded-ds-md bg-accent px-ds-5 py-ds-2 text-ds-body-sm font-semibold text-accent-foreground shadow-ds-card transition-colors hover:bg-accent/90"
             >
-              10분 만에 첫 설계도 만들기
+              첫 설계도 만들기
             </Link>
             <Link
               href="/"

@@ -23,6 +23,7 @@ const BenchmarkSchema = z.object({
 const SceneResponseSchema = z.object({
   candidates: z.array(SceneCandidateSchema).min(3).max(4),
   benchmarks: z.array(BenchmarkSchema),
+  engine: z.union([z.literal("anthropic"), z.literal("heuristic")]),
 });
 
 type SceneResponse = z.infer<typeof SceneResponseSchema>;
@@ -30,6 +31,11 @@ type SceneState =
   | { readonly kind: "loading" }
   | { readonly kind: "loaded"; readonly data: SceneResponse }
   | { readonly kind: "error"; readonly message: string };
+
+const ENGINE_LABELS = {
+  anthropic: "AI 분석 기준",
+  heuristic: "규칙 기반 추천",
+} as const satisfies Record<SceneResponse["engine"], string>;
 
 const ACT_LABELS: Record<SceneResponse["candidates"][number]["act"], string> = {
   1: "이야기 초반",
@@ -97,7 +103,7 @@ export function ScenePlacement({ sceneText }: { readonly sceneText: string }) {
           <h3 className="mt-ds-1 text-ds-h3 font-bold text-text">이 장면은 이런 자리에 들어갈 수 있어요</h3>
           <p className="mt-ds-1 text-ds-body-sm text-muted">원문은 그대로 두고, 어울리는 자리만 먼저 살펴봅니다.</p>
         </div>
-        <Chip variant="secondary">AI 분석 초안 기준</Chip>
+        {state.kind === "loaded" ? <Chip variant="secondary">{ENGINE_LABELS[state.data.engine]}</Chip> : null}
       </div>
 
       {state.kind === "loading" ? (
@@ -124,7 +130,7 @@ export function ScenePlacement({ sceneText }: { readonly sceneText: string }) {
           <div className="grid gap-ds-2 border-t border-border pt-ds-4">
             <div>
               <p className="text-ds-body-sm font-semibold text-text">비슷한 결을 가진 참고 작품</p>
-              <p className="mt-ds-1 text-ds-label text-muted">AI 분석 초안 라이브러리에서 장면의 흐름을 비교한 결과입니다.</p>
+              <p className="mt-ds-1 text-ds-label text-muted">AI 분석 초안 라이브러리에서 장면의 흐름을 비교한 결과입니다. 블록 번호는 AI 라이브러리 기준이라 정본과 다를 수 있어요.</p>
             </div>
             {state.data.benchmarks.length > 0 ? (
               <div className="grid gap-ds-2 sm:grid-cols-2">

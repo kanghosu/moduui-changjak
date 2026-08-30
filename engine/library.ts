@@ -17,6 +17,9 @@ export interface Work {
   /** 사용자가 보는 이름. 없으면 로그라인 앞부분에서 만든다. */
   title: string;
   story: Story;
+  snapshots?: { ts: number; story: Story }[];
+  confirmed?: Record<number, boolean>;
+  originals?: Record<number, string>;
   benchmarkName?: string;
   /** 어느 화면에서 만들었나 — 지표용 */
   origin: "create" | "write";
@@ -107,6 +110,38 @@ export function migrateLegacy(works: readonly Work[], legacyRaw: string | null, 
   } catch {
     return [...works];
   }
+}
+
+/** 작업실의 최신 상태를 연결된 작품에 반영한다. 연결이 끊긴 옛 슬롯은 그대로 둔다. */
+export function syncWorkFromProject(proj: CurrentProject, store: WorkStore = localWorkStore): void {
+  if (!proj.workId) return;
+  const work = store.get(proj.workId);
+  if (!work) return;
+  store.save({
+    ...work,
+    story: proj.story,
+    snapshots: proj.snapshots,
+    confirmed: proj.confirmed,
+    originals: proj.originals,
+    updatedAt: Date.now(),
+  });
+}
+
+/** /write 재생성 시 작품의 작업실 상태를 유지하고 새 story만 교체한다. */
+export function projectForRegeneration(
+  story: Story,
+  workId: string,
+  benchmarkName: string | undefined,
+  existingWork: Work | null,
+): CurrentProject {
+  return {
+    story,
+    benchmarkName,
+    confirmed: existingWork?.confirmed ?? {},
+    snapshots: existingWork?.snapshots ?? [],
+    originals: existingWork?.originals ?? {},
+    workId,
+  };
 }
 
 /* ── localStorage 어댑터 ─────────────────────── */

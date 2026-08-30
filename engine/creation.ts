@@ -65,6 +65,15 @@ export interface LoglineOption {
   reason: string;         // 왜 이 벤치마크인가
 }
 
+/** 재생성 전의 로그라인 세트를 최근 3개까지만 보관한다. */
+export function appendLoglineHistory(
+  history: LoglineOption[][] | undefined,
+  previous: LoglineOption[],
+): LoglineOption[][] {
+  const existing = history ?? [];
+  return previous.length === 0 ? [...existing] : [...existing, previous].slice(-3);
+}
+
 /* ── 세션 (localStorage: mc_session) ───────────── */
 export const SESSION_KEY = "mc_session";
 
@@ -75,6 +84,7 @@ export interface CreationSession {
   questions: CreationQuestion[];       // 이번 세션에서 실제로 묻기로 한 것
   answers: Record<string, string>;     // questionId -> 답 (빈 답 = 건너뜀)
   loglineOptions: LoglineOption[];
+  loglineHistory?: LoglineOption[][];
   chosenIndex: number | null;
   deepenNote: string;                  // 심화 메모 (인물/사건/플롯/취재)
   hookNote: string;
@@ -84,7 +94,7 @@ export interface CreationSession {
 export function emptySession(): CreationSession {
   return {
     utterance: "", source: "text", elements: {}, questions: [], answers: {},
-    loglineOptions: [], chosenIndex: null, deepenNote: "", hookNote: "", stage: 1,
+    loglineOptions: [], loglineHistory: [], chosenIndex: null, deepenNote: "", hookNote: "", stage: 1,
   };
 }
 

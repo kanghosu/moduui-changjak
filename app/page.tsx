@@ -139,7 +139,7 @@ export default function Home() {
             <em>개봉</em>합니다
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-cinema-sub">
-            좋아하는 영화의 뼈대(4막·24블록)를 빌려, 10분 만에 첫 설계도를 세워요.
+            좋아하는 영화의 뼈대(4막·24블록)를 빌려, 첫 설계도를 세워요.
           </p>
 
           <div className="seg glass mb-3 mt-7">

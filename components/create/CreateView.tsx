@@ -50,6 +50,7 @@ export interface CreateViewProps {
   readonly onSelectLogline: (index: number) => void;
   readonly onContinueLogline: () => void;
   readonly onRegenerateLoglines: () => void;
+  readonly onRestorePreviousLoglines: () => void;
   readonly onBackToQuestions: () => void;
   readonly onDeepenNoteChange: (value: string) => void;
   readonly onHookNoteChange: (value: string) => void;
@@ -75,6 +76,7 @@ export function CreateView({
   onOpenStudio,
   onPreviousQuestion,
   onRegenerateLoglines,
+  onRestorePreviousLoglines,
   onReset,
   onSelectLogline,
   onSkipQuestion,
@@ -159,12 +161,14 @@ export function CreateView({
             {session.stage === 3 ? (
               <LoglineStage
                 options={session.loglineOptions}
+                history={session.loglineHistory ?? []}
                 chosenIndex={session.chosenIndex}
                 loading={Boolean(loading)}
                 posterOf={posterOf}
                 onSelect={onSelectLogline}
                 onContinue={onContinueLogline}
                 onRegenerate={onRegenerateLoglines}
+                onRestorePrevious={onRestorePreviousLoglines}
                 onBack={onBackToQuestions}
               />
             ) : null}

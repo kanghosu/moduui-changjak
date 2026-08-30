@@ -8,21 +8,25 @@ import type { LoglineOption } from "@/engine/creation";
 
 export interface LoglineStageProps {
   readonly options: readonly LoglineOption[];
+  readonly history: readonly (readonly LoglineOption[])[];
   readonly chosenIndex: number | null;
   readonly loading: boolean;
   readonly posterOf: (title: string) => string | null;
   readonly onSelect: (index: number) => void;
   readonly onContinue: () => void;
   readonly onRegenerate: () => void;
+  readonly onRestorePrevious: () => void;
   readonly onBack: () => void;
 }
 
 export function LoglineStage({
   chosenIndex,
+  history,
   loading,
   onBack,
   onContinue,
   onRegenerate,
+  onRestorePrevious,
   onSelect,
   options,
   posterOf,
@@ -92,6 +96,11 @@ export function LoglineStage({
         <Button type="button" variant="ghost" loading={loading} onClick={onRegenerate}>
           다른 뼈대 보기
         </Button>
+        {history.length > 0 ? (
+          <Button type="button" variant="ghost" className="text-xs" onClick={onRestorePrevious}>
+            이전 안 보기
+          </Button>
+        ) : null}
         <Button type="button" variant="quiet" onClick={onBack}>
           답 고치기
         </Button>

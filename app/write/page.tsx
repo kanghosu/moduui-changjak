@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiResult, Results } from "@/components/BenchmarkResult";
 import { ConceptHelp } from "@/components/ConceptHelp";
+import { CURRENT_KEY, localWorkStore, projectForRegeneration, saveWork, syncWorkFromProject } from "@/engine/library";
 
 /* ── 타입 ─────────────────────────────────────── */
 interface FormState {
@@ -59,6 +60,7 @@ function WriteInner() {
   const [loading, setLoading] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const [lib, setLib] = useState<LibItem[]>([]);
+  const [savedWorkId, setSavedWorkId] = useState<string | null>(null);
   const draftRef = useRef<ReturnType<typeof setTimeout>>();
   const resultRef = useRef<HTMLDivElement>(null);
 
@@ -118,8 +120,17 @@ function WriteInner() {
       setResult(d);
       if (d.story) {
         try {
-          localStorage.setItem("mc_project", JSON.stringify({ story: d.story, benchmarkName: benchmark ?? undefined, confirmed: {}, snapshots: [] }));
-        } catch { /* 저장 실패는 무시 */ }
+          if (savedWorkId) {
+            const current = projectForRegeneration(d.story, savedWorkId, benchmark ?? undefined, localWorkStore.get(savedWorkId));
+            localStorage.setItem(CURRENT_KEY, JSON.stringify(current));
+            syncWorkFromProject(current);
+          } else {
+            const work = saveWork(d.story, { benchmarkName: benchmark ?? undefined, origin: "write" });
+            setSavedWorkId(work.id);
+          }
+        } catch (cause: unknown) {
+          setError(cause instanceof Error ? cause.message : "작품은 만들었지만 저장은 확인이 필요합니다.");
+        }
       }
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     } catch (e2) { setError(e2 instanceof Error ? e2.message : "오류"); }
