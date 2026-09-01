@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { type ApiResult } from "@/components/BenchmarkResult";
 import { DeepenStage } from "@/components/create/DeepenStage";
+import { CompletionStage } from "@/components/create/CompletionStage";
 import { IdeaStage } from "@/components/create/IdeaStage";
 import { LoglineStage } from "@/components/create/LoglineStage";
+import { LiveProfileCard } from "@/components/create/LiveProfileCard";
 import { QuestionStage } from "@/components/create/QuestionStage";
+import { StageTransition } from "@/components/create/StageTransition";
 import { StoryTimeline } from "@/components/create/StoryTimeline";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -57,6 +60,7 @@ export interface CreateViewProps {
   readonly onGenerateStory: () => void;
   readonly onBackToLoglines: () => void;
   readonly onOpenStudio: () => void;
+  readonly onExport: () => void;
 }
 
 export function CreateView({
@@ -69,6 +73,7 @@ export function CreateView({
   onContinueLogline,
   onDeepenNoteChange,
   onElementChange,
+  onExport,
   onGenerateLoglines,
   onGenerateStory,
   onHookNoteChange,
@@ -89,13 +94,12 @@ export function CreateView({
   result,
   session,
 }: CreateViewProps) {
-  const answeredCount = session.questions.filter((question) => (session.answers[question.id] || "").trim()).length;
   const progressSteps: readonly ProgressStep[] = STAGE_NAMES.map((title, index) => {
     const stage = index + 1;
     const output = stage === 1
       ? session.utterance.trim() ? "아이디어 1건 확정 / 추가 가능" : "아직 비어 있음"
       : stage === 2
-        ? answeredCount + "개 답변 / " + Math.max(session.questions.length - answeredCount, 0) + "개 남음"
+        ? session.questions.length > 0 ? "작품 재료를 답과 함께 채우는 중" : "작품 재료 확인 완료"
         : stage === 3
           ? session.chosenIndex !== null ? "로그라인 1안 확정 / 다른 2안 보관" : "로그라인 3안 / 1안 선택 필요"
           : stage === 4
@@ -130,6 +134,7 @@ export function CreateView({
 
         <div className="grid grid-cols-1 gap-ds-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <div className="grid min-w-0 gap-ds-5">
+            <StageTransition key={session.stage} stage={session.stage}>
             {session.stage === 1 ? (
               <IdeaStage
                 utterance={session.utterance}
@@ -142,26 +147,30 @@ export function CreateView({
             ) : null}
 
             {session.stage === 2 ? (
-              <QuestionStage
-                elements={session.elements}
-                questions={session.questions}
-                answers={session.answers}
-                questionIndex={questionIndex}
-                loading={Boolean(loading)}
-                onElementChange={onElementChange}
-                onAnswerChange={onAnswerChange}
-                onPreviousQuestion={onPreviousQuestion}
-                onNextQuestion={onNextQuestion}
-                onSkipQuestion={onSkipQuestion}
-                onGenerateLoglines={onGenerateLoglines}
-                onBack={onBackToIdea}
-              />
+              <>
+                <LiveProfileCard session={session} />
+                <QuestionStage
+                  elements={session.elements}
+                  questions={session.questions}
+                  answers={session.answers}
+                  questionIndex={questionIndex}
+                  loading={Boolean(loading)}
+                  onElementChange={onElementChange}
+                  onAnswerChange={onAnswerChange}
+                  onPreviousQuestion={onPreviousQuestion}
+                  onNextQuestion={onNextQuestion}
+                  onSkipQuestion={onSkipQuestion}
+                  onGenerateLoglines={onGenerateLoglines}
+                  onBack={onBackToIdea}
+                />
+              </>
             ) : null}
 
             {session.stage === 3 ? (
               <LoglineStage
                 options={session.loglineOptions}
                 history={session.loglineHistory ?? []}
+                answers={session.answers}
                 chosenIndex={session.chosenIndex}
                 loading={Boolean(loading)}
                 posterOf={posterOf}
@@ -189,18 +198,8 @@ export function CreateView({
             {session.stage === 5 ? (
               result?.story ? (
                 <>
-                  <div className="flex flex-wrap items-center gap-ds-2">
-                    <Chip variant="secondary">{result.engine === "mock" ? "구조 골격 mock" : "생성된 이야기 지도"}</Chip>
-                    <span className="text-ds-label text-muted">원문과 선택을 바탕으로 만든 현재 버전</span>
-                  </div>
+                  <CompletionStage story={result.story} engine={result.engine} onOpenStudio={onOpenStudio} onExport={onExport} />
                   <StoryTimeline story={result.story} />
-                  <Card tone="surface" className="flex flex-wrap items-center justify-between gap-ds-4">
-                    <div>
-                      <h3 className="text-ds-h3 font-bold text-text">이 지도를 작업실에서 더 다듬어 볼까요?</h3>
-                      <p className="mt-ds-1 text-ds-body-sm text-muted">확정한 자리를 장면과 문장으로 이어갑니다.</p>
-                    </div>
-                    <Button type="button" onClick={onOpenStudio}>작업실에서 다듬기</Button>
-                  </Card>
 
                   {/* 스토리툰 전환 — 회의(2026-08-19) 확정 결제 지점. 지도를 본 직후가 전환이 가장 높다. */}
                   <Card tone="elevated" className="flex flex-wrap items-center justify-between gap-ds-4">
@@ -225,6 +224,7 @@ export function CreateView({
                 </Card>
               )
             ) : null}
+            </StageTransition>
 
             {loading ? <Card tone="elevated" className="p-ds-5 text-center text-ds-body-sm text-muted" role="status">{loading}</Card> : null}
             {error ? <Card tone="surface" className="p-ds-4 text-ds-body-sm text-danger" role="alert">{error}</Card> : null}

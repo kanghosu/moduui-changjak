@@ -13,7 +13,8 @@ import {
   toExtractedElements,
   type LibraryItem,
 } from "@/components/create/createSchemas";
-import { saveWork } from "@/engine/library";
+import { exportWork, filenameFor } from "@/engine/export";
+import { makeWork, saveWork } from "@/engine/library";
 import {
   SESSION_KEY,
   appendLoglineHistory,
@@ -199,6 +200,23 @@ export default function CreatePage() {
     }
   }
 
+  function exportStory(): void {
+    const story = result?.story;
+    if (!story) return;
+
+    const now = Date.now();
+    const work = makeWork(story, { origin: "create", now });
+    const blob = new Blob([exportWork(work, now)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filenameFor(work, "json", now);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <CreateView
       session={session}
@@ -254,6 +272,7 @@ export default function CreatePage() {
       onGenerateStory={() => void runGenerate()}
       onBackToLoglines={() => goTo(3)}
       onOpenStudio={() => router.push("/studio")}
+      onExport={exportStory}
     />
   );
 }

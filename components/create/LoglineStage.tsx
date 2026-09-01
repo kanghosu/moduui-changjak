@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { cx } from "@/components/ui/utils";
+import { highlightLogline } from "./funFlow";
 import type { LoglineOption } from "@/engine/creation";
 
 export interface LoglineStageProps {
   readonly options: readonly LoglineOption[];
   readonly history: readonly (readonly LoglineOption[])[];
+  readonly answers: Readonly<Record<string, string>>;
   readonly chosenIndex: number | null;
   readonly loading: boolean;
   readonly posterOf: (title: string) => string | null;
@@ -20,6 +22,7 @@ export interface LoglineStageProps {
 }
 
 export function LoglineStage({
+  answers,
   chosenIndex,
   history,
   loading,
@@ -46,6 +49,8 @@ export function LoglineStage({
           {options.map((option, index) => {
             const selected = chosenIndex === index;
             const poster = posterOf(option.benchmarkTitle);
+            const highlightedLogline = highlightLogline(option.logline, Object.values(answers));
+            const hasAnswerHighlight = highlightedLogline.some((segment) => segment.highlighted);
             return (
               <Button
                 key={index}
@@ -63,7 +68,16 @@ export function LoglineStage({
                     <Chip variant={selected ? "accent" : "default"}>{option.direction}</Chip>
                     {selected ? <Chip variant="success">내 선택</Chip> : null}
                   </div>
-                  <p className="mt-ds-3 text-ds-body font-semibold leading-relaxed text-text">{option.logline}</p>
+                  <p className="mt-ds-3 text-ds-body font-semibold leading-relaxed text-text">
+                    {highlightedLogline.map((segment, segmentIndex) => segment.highlighted ? (
+                      <mark key={segmentIndex} className="rounded-ds-sm bg-accent/10 px-0.5 text-accent underline decoration-accent/60 decoration-2 underline-offset-2">
+                        {segment.text}
+                      </mark>
+                    ) : (
+                      <span key={segmentIndex}>{segment.text}</span>
+                    ))}
+                  </p>
+                  {hasAnswerHighlight ? <p className="mt-ds-1 text-ds-label font-normal text-secondary">밑줄 친 표현은 당신의 답이 반영된 자리예요.</p> : null}
                   <p className="mt-ds-2 text-ds-body-sm leading-relaxed text-muted">
                     참고 작품 <strong className="text-text">{option.benchmarkTitle}</strong> · {option.reason}
                   </p>

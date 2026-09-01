@@ -64,6 +64,10 @@ export function QuestionStage({
   const question = questions[questionIndex];
   const answer = question ? answers[question.id] ?? "" : "";
   const remaining = Math.max(questions.length - questionIndex - 1, 0);
+  const sceneQuestion = questions.find((candidate) => candidate.elementKey === "scene");
+  const sceneAnswer = sceneQuestion ? (answers[sceneQuestion.id] ?? "").trim() : "";
+  const sceneText = elements.scene?.value.trim()
+    || (sceneAnswer && !/^없(음|어요?)$/.test(sceneAnswer) ? sceneAnswer : "");
 
   return (
     <Card tone="surface" className="grid gap-ds-5 p-ds-6">
@@ -96,7 +100,13 @@ export function QuestionStage({
         <p className="text-ds-body-sm text-muted">아직 잡힌 게 많지 않아요. 아래 한 가지씩 답하면 됩니다.</p>
       )}
 
-      {elements.scene?.value.trim() ? <ScenePlacement sceneText={elements.scene.value} /> : null}
+      {sceneText ? (
+        <ScenePlacement
+          sceneText={sceneText}
+          questions={questions}
+          answers={answers}
+        />
+      ) : null}
 
       {question ? (
         <Card tone="elevated" className="grid gap-ds-5 p-ds-6">
@@ -111,6 +121,11 @@ export function QuestionStage({
           <div>
             <h3 className="text-ds-h3 font-bold leading-relaxed text-text">{question.ask}</h3>
             {question.hint ? <p className="mt-ds-2 text-ds-body-sm leading-relaxed text-muted">{question.hint}</p> : null}
+            {question.makes ? (
+              <p className="mt-ds-3 text-ds-body-sm text-secondary">
+                <span className="font-semibold">이 답으로 만들어지는 것</span> · {question.makes}
+              </p>
+            ) : null}
           </div>
 
           <Input

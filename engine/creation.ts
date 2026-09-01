@@ -45,20 +45,21 @@ export interface CreationQuestion {
   elementKey: ElementKey;
   ask: string;
   hint?: string;
+  makes?: string;
   priority: 1 | 2 | 3; // 낮을수록 먼저 묻는다
 }
 
 export const QUESTION_POOL: CreationQuestion[] = [
-  { id: "q-scene", elementKey: "scene", priority: 1, ask: "머릿속에 가장 강렬하게 남아 있는 장면이 있나요?", hint: "꿈에서 본 한 컷이어도 좋아요. 없으면 '없음'이라고 해도 됩니다." },
-  { id: "q-hero", elementKey: "heroDesc", priority: 1, ask: "주인공은 어떤 사람인가요?", hint: "이름은 없어도 돼요. '어떤 처지의 누구'면 충분합니다." },
-  { id: "q-premise", elementKey: "premise", priority: 1, ask: "다루고 싶은 사건이나 소재는 무엇인가요?", hint: "뉴스, 경험, 상상 무엇이든." },
-  { id: "q-theme", elementKey: "theme", priority: 2, ask: "무엇에 관한 이야기를 하고 싶나요?", hint: "한 단어여도 좋아요 — 복수, 가족, 성장…" },
-  { id: "q-ending", elementKey: "ending", priority: 2, ask: "결말은 어떤 기분이면 좋겠나요?", hint: "출발점과 도착점을 막연하게라도. '딱히 없음'도 답입니다." },
-  { id: "q-genre", elementKey: "genre", priority: 2, ask: "장르나 톤의 느낌이 있나요?", hint: "유쾌한, 비장한, 스릴러, 로맨스…" },
-  { id: "q-benchmark", elementKey: "benchmark", priority: 2, ask: "이 이야기를 떠올렸을 때 생각난 영화가 있나요?", hint: "예: 기생충. 없으면 넘어가도 됩니다." },
-  { id: "q-choice", elementKey: "choice", priority: 3, ask: "주인공이 놓이는 갈림길(선택)이 있나요?", hint: "있음/없음으로만 답해도 됩니다." },
-  { id: "q-era", elementKey: "era", priority: 3, ask: "시대나 배경이 정해져 있나요?", hint: "없으면 건너뛰어도 됩니다." },
-  { id: "q-hook", elementKey: "hook", priority: 3, ask: "'이건 나만 쓸 수 있다' 싶은 한 가지가 있나요?", hint: "대사 한 줄, 설정, 직접 겪은 경험…" },
+  { id: "q-scene", elementKey: "scene", priority: 1, ask: "머릿속에 가장 강렬하게 남아 있는 장면이 있나요?", hint: "꿈에서 본 한 컷이어도 좋아요. 없으면 '없음'이라고 해도 됩니다.", makes: "이야기의 핵심 장면이 잡혀요." },
+  { id: "q-hero", elementKey: "heroDesc", priority: 1, ask: "주인공은 어떤 사람인가요?", hint: "이름은 없어도 돼요. '어떤 처지의 누구'면 충분합니다.", makes: "주인공의 모습과 성향이 선명해져요." },
+  { id: "q-premise", elementKey: "premise", priority: 1, ask: "다루고 싶은 사건이나 소재는 무엇인가요?", hint: "뉴스, 경험, 상상 무엇이든.", makes: "핵심 갈등의 씨앗이 정해져요." },
+  { id: "q-theme", elementKey: "theme", priority: 2, ask: "무엇에 관한 이야기를 하고 싶나요?", hint: "한 단어여도 좋아요 — 복수, 가족, 성장…", makes: "이야기가 건드릴 주제가 잡혀요." },
+  { id: "q-ending", elementKey: "ending", priority: 2, ask: "결말은 어떤 기분이면 좋겠나요?", hint: "출발점과 도착점을 막연하게라도. '딱히 없음'도 답입니다.", makes: "이야기의 도착점이 정해져요." },
+  { id: "q-genre", elementKey: "genre", priority: 2, ask: "장르나 톤의 느낌이 있나요?", hint: "유쾌한, 비장한, 스릴러, 로맨스…", makes: "이야기의 장르와 결이 잡혀요." },
+  { id: "q-benchmark", elementKey: "benchmark", priority: 2, ask: "이 이야기를 떠올렸을 때 생각난 영화가 있나요?", hint: "예: 기생충. 없으면 넘어가도 됩니다.", makes: "참고할 이야기의 결이 연결돼요." },
+  { id: "q-choice", elementKey: "choice", priority: 3, ask: "주인공이 놓이는 갈림길(선택)이 있나요?", hint: "있음/없음으로만 답해도 됩니다.", makes: "주인공이 맞닥뜨릴 갈림길이 생겨요." },
+  { id: "q-era", elementKey: "era", priority: 3, ask: "시대나 배경이 정해져 있나요?", hint: "없으면 건너뛰어도 됩니다.", makes: "이야기가 펼쳐질 시간과 장소가 잡혀요." },
+  { id: "q-hook", elementKey: "hook", priority: 3, ask: "'이건 나만 쓸 수 있다' 싶은 한 가지가 있나요?", hint: "대사 한 줄, 설정, 직접 겪은 경험…", makes: "당신만의 차별점이 기록돼요." },
 ];
 
 export const MAX_QUESTIONS = 10;
