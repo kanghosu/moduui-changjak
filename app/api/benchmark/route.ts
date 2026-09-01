@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { makeAnthropicClient } from "@/engine/anthropic-client";
+import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
@@ -148,15 +148,16 @@ export async function POST(req: NextRequest) {
   }
 
   // 2) 라이브러리에 없으면: 키가 있을 때만 AI 자동 분석
+  const noKeyResponse = {
+    needsKey: true,
+    engine: "none",
+    mode: "benchmark",
+    available: LIBRARY.map((s) => s.title),
+    message:
+      `'${title}'는 거장 확정 라이브러리에 아직 없어요. ANTHROPIC_API_KEY를 연결하면 어떤 영화든 AI가 자동으로 24블록 분석을 생성합니다. (지금은 아래 라이브러리 작품으로 체험해보세요)`,
+  };
   if (!apiKey) {
-    return NextResponse.json({
-      needsKey: true,
-      engine: "none",
-      mode: "benchmark",
-      available: LIBRARY.map((s) => s.title),
-      message:
-        `'${title}'는 거장 확정 라이브러리에 아직 없어요. ANTHROPIC_API_KEY를 연결하면 어떤 영화든 AI가 자동으로 24블록 분석을 생성합니다. (지금은 아래 라이브러리 작품으로 체험해보세요)`,
-    });
+    return NextResponse.json(noKeyResponse);
   }
 
   // 3) AI 자동 분석 (거장 형식 + few-shot 근거)
@@ -221,17 +222,29 @@ ${examples}
 
     let story: Story;
     try {
-      story = await callOnce();
-    } catch {
-      story = await callOnce("\n\n반드시 24개 블록을 가진 JSON 객체 하나만 출력하라.");
+      try {
+        story = await callOnce();
+      } catch {
+        story = await callOnce("\n\n반드시 24개 블록을 가진 JSON 객체 하나만 출력하라.");
+      }
+    } catch (error) {
+      if (!isFallbackWorthy(error)) {
+        return NextResponse.json({ error: "AI 분석에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
+      }
+      const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+        ? error.status
+        : undefined;
+      const message = error instanceof Error ? error.message : "알 수 없는 Anthropic 오류";
+      console.error("[AI fallback]", "benchmark", status, message);
+      // checkDailyGuard가 실제 호출 직전에 올린 카운터는 호출 실패 후에도 시도 비용으로 유지한다.
+      return NextResponse.json({ ...noKeyResponse, fallbackFrom: "anthropic" });
     }
     story.origin = "ai";
     if (!Array.isArray(story.notes)) story.notes = [];
     story.notes.unshift(`[AI 자동 분석] '${title}'를 거장 템플릿 형식으로 자동 생성 (Anthropic ${model}).`);
 
     return NextResponse.json({ story, issues: validateStructure(story), engine: "anthropic", model, mode: "benchmark" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "AI 분석 실패";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "AI 분석에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
   }
 }

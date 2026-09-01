@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { makeAnthropicClient } from "@/engine/anthropic-client";
-import { callModelJson, RefusalError } from "@/engine/anthropic-call";
+import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
+import { callModelJson } from "@/engine/anthropic-call";
 import { normalizeElements, type ExtractedElements, type LoglineOption } from "@/engine/creation";
 import { matchBenchmarks, libraryTitles } from "@/engine/matcher";
 import { MODEL_MAIN } from "@/engine/models";
@@ -83,32 +83,39 @@ export async function POST(req: NextRequest) {
 
     const userMsg = JSON.stringify({ utterance, elements });
 
-    // 거부·파싱 실패·모델 계약을 헬퍼가 모두 흡수한다 (engine/anthropic-call)
     const dailyGuard = await checkDailyGuard(req);
     if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
-    const called = await callModelJson<{ options?: LoglineOption[] }>(client, model, {
-      system, user: userMsg, maxTokens: 2000,
-    });
-    const parsed = called.data;
+    try {
+      const called = await callModelJson<{ options?: LoglineOption[] }>(client, model, {
+        system, user: userMsg, maxTokens: 2000,
+      });
+      const parsed = called.data;
 
-    let options = Array.isArray(parsed.options) ? parsed.options.slice(0, 3) : [];
-    // 벤치마크가 목록에 없으면 휴리스틱으로 보정
-    const titleSet = new Set(titles);
-    options = options.map((o) => ({
-      ...o,
-      benchmarkTitle: titleSet.has(o.benchmarkTitle)
-        ? o.benchmarkTitle
-        : matchBenchmarks(o.logline || utterance).matches[0]?.title || "기생충",
-    }));
-    if (options.length < 3) options = [...options, ...mockLoglines(utterance, elements)].slice(0, 3);
+      let options = Array.isArray(parsed.options) ? parsed.options.slice(0, 3) : [];
+      // 벤치마크가 목록에 없으면 휴리스틱으로 보정
+      const titleSet = new Set(titles);
+      options = options.map((o) => ({
+        ...o,
+        benchmarkTitle: titleSet.has(o.benchmarkTitle)
+          ? o.benchmarkTitle
+          : matchBenchmarks(o.logline || utterance).matches[0]?.title || "기생충",
+      }));
+      if (options.length < 3) options = [...options, ...mockLoglines(utterance, elements)].slice(0, 3);
 
-    return NextResponse.json({ options, engine: "anthropic", model: called.modelUsed, fellBack: called.fellBack });
-  } catch (err) {
-    if (err instanceof RefusalError) {
-      // 안전 분류기 거부는 서버 오류가 아니다 — 사용자에게 이유를 그대로 전한다
-      return NextResponse.json({ error: err.message }, { status: 422 });
+      return NextResponse.json({ options, engine: "anthropic", model: called.modelUsed, fellBack: called.fellBack });
+    } catch (error) {
+      if (!isFallbackWorthy(error)) {
+        return NextResponse.json({ error: "로그라인 생성에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
+      }
+      const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+        ? error.status
+        : undefined;
+      const message = error instanceof Error ? error.message : "알 수 없는 Anthropic 오류";
+      console.error("[AI fallback]", "loglines", status, message);
+      // checkDailyGuard가 호출 직전에 올린 카운터는 호출 실패 후에도 시도 비용으로 유지한다.
+      return NextResponse.json({ options: mockLoglines(utterance, elements), engine: "mock", fallbackFrom: "anthropic" });
     }
-    const message = err instanceof Error ? err.message : "로그라인 생성 실패";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "로그라인 생성에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
   }
 }

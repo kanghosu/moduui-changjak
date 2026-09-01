@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { makeAnthropicClient } from "@/engine/anthropic-client";
+import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
       let runner: StageRunner;
       let engine: string;
       let model: string | undefined;
+      let fallbackFrom: "anthropic" | undefined;
 
       if (apiKey) {
         model = MODEL_MAIN;
@@ -124,9 +125,25 @@ export async function POST(req: NextRequest) {
         engine = "mock";
       }
 
-      const { story, trace } = await orchestrate(input, files, runner);
-      const issues = validateStructure(story);
-      return NextResponse.json({ story, issues, trace, engine, model, mode: "pipeline" });
+      let outcome: Awaited<ReturnType<typeof orchestrate>>;
+      try {
+        outcome = await orchestrate(input, files, runner);
+      } catch (error) {
+        if (engine !== "anthropic" || !isFallbackWorthy(error)) throw error;
+        const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+          ? error.status
+          : undefined;
+        const message = error instanceof Error ? error.message : "알 수 없는 Anthropic 오류";
+        console.error("[AI fallback]", "generate", status, message);
+        // checkDailyGuard가 실제 호출 직전에 올린 카운터는 호출 실패 후에도 시도 비용으로 유지한다.
+        runner = makeMockRunner(input);
+        outcome = await orchestrate(input, files, runner);
+        engine = "mock";
+        model = undefined;
+        fallbackFrom = "anthropic";
+      }
+      const issues = validateStructure(outcome.story);
+      return NextResponse.json({ story: outcome.story, issues, trace: outcome.trace, engine, model, mode: "pipeline", fallbackFrom });
     }
 
     // ── 단일 호출 모드 ───────────────────────────────
@@ -187,16 +204,28 @@ export async function POST(req: NextRequest) {
     if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
 
     let story: Story;
+    let fallbackFrom: "anthropic" | undefined;
     try {
-      story = await callOnce();
-    } catch {
-      story = await callOnce("\n\n반드시 스키마를 만족하는 JSON 객체 하나만 출력하라. 코드펜스/설명 금지.");
+      try {
+        story = await callOnce();
+      } catch {
+        story = await callOnce("\n\n반드시 스키마를 만족하는 JSON 객체 하나만 출력하라. 코드펜스/설명 금지.");
+      }
+    } catch (error) {
+      if (!isFallbackWorthy(error)) throw error;
+      const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+        ? error.status
+        : undefined;
+      const message = error instanceof Error ? error.message : "알 수 없는 Anthropic 오류";
+      console.error("[AI fallback]", "generate", status, message);
+      // checkDailyGuard가 실제 호출 직전에 올린 카운터는 호출 실패 후에도 시도 비용으로 유지한다.
+      story = mockGenerate(input);
+      fallbackFrom = "anthropic";
     }
 
     const issues = validateStructure(story);
-    return NextResponse.json({ story, issues, engine: "anthropic", model, mode: "single" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "엔진 호출 실패";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ story, issues, engine: fallbackFrom ? "mock" : "anthropic", model: fallbackFrom ? undefined : model, mode: "single", fallbackFrom });
+  } catch {
+    return NextResponse.json({ error: "엔진 호출에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
   }
 }

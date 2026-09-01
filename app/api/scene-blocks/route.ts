@@ -1,5 +1,5 @@
 import { promises as fs } from "node:fs";
-import { makeAnthropicClient } from "@/engine/anthropic-client";
+import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { MODEL_MAIN } from "@/engine/models";
 import path from "node:path";
@@ -121,7 +121,15 @@ export async function POST(request: NextRequest) {
     const model = MODEL_MAIN;
     return NextResponse.json({ candidates, benchmarks, engine: "anthropic", model, mode: "scene-reverse" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "장면 분석에 실패했습니다.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    if (!isFallbackWorthy(error)) {
+      return NextResponse.json({ error: "장면 분석에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
+    }
+    const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+      ? error.status
+      : undefined;
+    const message = error instanceof Error ? error.message : "알 수 없는 Anthropic 오류";
+    console.error("[AI fallback]", "scene-blocks", status, message);
+    // checkDailyGuard가 실제 호출 직전에 올린 카운터는 호출 실패 후에도 시도 비용으로 유지한다.
+    return NextResponse.json({ candidates: heuristicCandidates, benchmarks, engine: "heuristic", mode: "scene-reverse", fallbackFrom: "anthropic" });
   }
 }

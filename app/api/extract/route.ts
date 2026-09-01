@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { makeAnthropicClient } from "@/engine/anthropic-client";
+import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import {
   QUESTION_POOL, MAX_QUESTIONS, missingQuestions,
@@ -28,6 +28,17 @@ function extractJson(text: string): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function heuristicElements(utterance: string): ExtractedElements {
+  return heuristicExtract(utterance, {
+    findBenchmark: (text) => {
+      const top = scoreBenchmarks(text)[0];
+      if (!top) return undefined;
+      const plain = top.title.replace(/[<>]/g, "").split(",")[0].trim();
+      return plain.length >= 2 && text.includes(plain) ? top.title : undefined;
+    },
+  });
 }
 
 function sanitize(raw: unknown): ExtractedElements {
@@ -76,16 +87,10 @@ export async function POST(req: NextRequest) {
     let elements: ExtractedElements;
     let engine: string;
     let model: string | undefined;
+    let fallbackFrom: "anthropic" | undefined;
 
     if (!apiKey) {
-      elements = heuristicExtract(utterance, {
-        findBenchmark: (text) => {
-          const top = scoreBenchmarks(text)[0];
-          if (!top) return undefined;
-          const plain = top.title.replace(/[<>]/g, "").split(",")[0].trim();
-          return plain.length >= 2 && text.includes(plain) ? top.title : undefined;
-        },
-      });
+      elements = heuristicElements(utterance);
       engine = "heuristic";
     } else {
       model = MODEL_LIGHT;
@@ -107,32 +112,46 @@ export async function POST(req: NextRequest) {
       const dailyGuard = await checkDailyGuard(req);
       if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
 
-      const once = async (extra = "") => {
-        const resp = await client.messages.create({
-          model: model!,
-          ...buildRequestParams(model!, { maxTokens: 1200 }),
-          system,
-          messages: [{ role: "user", content: utterance + extra }],
-        });
-        // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
-        // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
-        const _refusal = refusalOf(resp);
-        if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
-        const text = resp.content
-          .filter((b): b is { type: "text"; text: string } => b.type === "text")
-          .map((b) => b.text)
-          .join("\n");
-        return extractJson(text) as { elements?: unknown };
-      };
-
-      let parsed: { elements?: unknown };
       try {
-        parsed = await once();
-      } catch {
-        parsed = await once("\n\n반드시 JSON 객체 하나만 출력하라. 코드펜스/설명 금지.");
+        const once = async (extra = "") => {
+          const resp = await client.messages.create({
+            model: model!,
+            ...buildRequestParams(model!, { maxTokens: 1200 }),
+            system,
+            messages: [{ role: "user", content: utterance + extra }],
+          });
+          // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
+          // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+          const _refusal = refusalOf(resp);
+          if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
+          const text = resp.content
+            .filter((b): b is { type: "text"; text: string } => b.type === "text")
+            .map((b) => b.text)
+            .join("\n");
+          return extractJson(text) as { elements?: unknown };
+        };
+
+        let parsed: { elements?: unknown };
+        try {
+          parsed = await once();
+        } catch {
+          parsed = await once("\n\n반드시 JSON 객체 하나만 출력하라. 코드펜스/설명 금지.");
+        }
+        elements = sanitize(parsed.elements);
+        engine = "anthropic";
+      } catch (error) {
+        if (!isFallbackWorthy(error)) throw error;
+        const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+          ? error.status
+          : undefined;
+        const message = error instanceof Error ? error.message : "알 수 없는 Anthropic 오류";
+        console.error("[AI fallback]", "extract", status, message);
+        // checkDailyGuard가 호출 직전에 올린 카운터는 호출 실패 후에도 시도 비용으로 유지한다.
+        elements = heuristicElements(utterance);
+        engine = "heuristic";
+        model = undefined;
+        fallbackFrom = "anthropic";
       }
-      elements = sanitize(parsed.elements);
-      engine = "anthropic";
     }
 
     const questions = missingQuestions(elements);
@@ -143,9 +162,9 @@ export async function POST(req: NextRequest) {
       poolSize: QUESTION_POOL.length,
       engine,
       model,
+      fallbackFrom,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "추출 실패";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "추출에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
   }
 }
