@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import { makeAnthropicClient } from "@/engine/anthropic-client";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { MODEL_MAIN } from "@/engine/models";
 import path from "node:path";
@@ -7,6 +8,7 @@ import { z } from "zod";
 import { buildConceptPromptContext } from "@/engine/knowledge";
 import { findSimilarBenchmarks } from "@/engine/scene-benchmarks";
 import { inferSceneBlocks, type SceneCandidate } from "@/engine/scene-analysis";
+import { checkDailyGuard, checkGuard } from "@/engine/guard";
 
 export const runtime = "nodejs";
 
@@ -69,7 +71,7 @@ async function callAnthropic(sceneText: string, blockGuide: string): Promise<rea
   const model = MODEL_MAIN;
   const conceptContext = buildConceptPromptContext(["플롯", "결핍", "욕망", "전환점"]);
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const client = new Anthropic({ apiKey });
+  const client = makeAnthropicClient(apiKey);
   const response = await client.messages.create({
     model,
     ...buildRequestParams(model!, { maxTokens: 1_800 }),
@@ -94,6 +96,8 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "잘못된 요청 본문입니다." }, { status: 400 });
   }
+  const guard = await checkGuard(request, (JSON.stringify(body) ?? "").length, { consumeDaily: false });
+  if (!guard.ok) return NextResponse.json({ error: guard.message }, { status: guard.status });
 
   const parsed = SceneRequestSchema.safeParse(body);
   if (!parsed.success) {
@@ -108,6 +112,9 @@ export async function POST(request: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ candidates: heuristicCandidates, benchmarks, engine: "heuristic", mode: "scene-reverse" });
   }
+
+  const dailyGuard = await checkDailyGuard(request);
+  if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
 
   try {
     const candidates = await callAnthropic(sceneText, blockGuide);

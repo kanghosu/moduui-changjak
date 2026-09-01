@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { makeAnthropicClient } from "@/engine/anthropic-client";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
 import path from "path";
 import { validateStructure, type Story } from "@/engine/schema";
 import libraryRaw from "@/engine/benchmark-library.json";
+import { checkDailyGuard, checkGuard } from "@/engine/guard";
 
 export const runtime = "nodejs";
 
@@ -116,6 +118,8 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "잘못된 요청 본문" }, { status: 400 });
   }
+  const guard = await checkGuard(req, (JSON.stringify(body) ?? "").length, { consumeDaily: false });
+  if (!guard.ok) return NextResponse.json({ error: guard.message }, { status: guard.status });
   const title = body?.title?.trim();
   if (!title) return NextResponse.json({ error: "영화 제목을 입력하세요." }, { status: 400 });
 
@@ -165,7 +169,7 @@ export async function POST(req: NextRequest) {
     const examples = fewShot(["명량", "기생충"]);
     const model = MODEL_MAIN;
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey });
+    const client = makeAnthropicClient(apiKey);
 
     const system = `너는 김태원 「욕망의 레시피」 작법 엔진의 '벤치마크 분석가'다.
 사용자가 준 영화를 4막·24블록 구조로 분석해, 거장의 벤치마크 템플릿 형식의 JSON으로만 출력한다.
@@ -211,6 +215,9 @@ ${examples}
         .join("\n");
       return extractJson(text) as Story;
     };
+
+    const dailyGuard = await checkDailyGuard(req);
+    if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
 
     let story: Story;
     try {

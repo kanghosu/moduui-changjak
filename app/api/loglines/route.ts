@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { makeAnthropicClient } from "@/engine/anthropic-client";
 import { callModelJson, RefusalError } from "@/engine/anthropic-call";
 import { normalizeElements, type ExtractedElements, type LoglineOption } from "@/engine/creation";
 import { matchBenchmarks, libraryTitles } from "@/engine/matcher";
 import { MODEL_MAIN } from "@/engine/models";
+import { checkDailyGuard, checkGuard } from "@/engine/guard";
 
 export const runtime = "nodejs";
 
@@ -48,6 +50,8 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "잘못된 요청 본문" }, { status: 400 });
   }
+  const guard = await checkGuard(req, (JSON.stringify(body) ?? "").length, { consumeDaily: false });
+  if (!guard.ok) return NextResponse.json({ error: guard.message }, { status: guard.status });
   const utterance = body?.utterance?.trim() || "";
   const elements = normalizeElements(body?.elements);
   if (!utterance && Object.keys(elements).length === 0) {
@@ -63,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     const model = MODEL_MAIN;
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey });
+    const client = makeAnthropicClient(apiKey);
 
     const titles = libraryTitles();
     const system = [
@@ -80,6 +84,8 @@ export async function POST(req: NextRequest) {
     const userMsg = JSON.stringify({ utterance, elements });
 
     // 거부·파싱 실패·모델 계약을 헬퍼가 모두 흡수한다 (engine/anthropic-call)
+    const dailyGuard = await checkDailyGuard(req);
+    if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
     const called = await callModelJson<{ options?: LoglineOption[] }>(client, model, {
       system, user: userMsg, maxTokens: 2000,
     });

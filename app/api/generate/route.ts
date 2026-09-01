@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { makeAnthropicClient } from "@/engine/anthropic-client";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
@@ -11,6 +12,7 @@ import {
   type OrchestrateFiles,
   type StageRunner,
 } from "@/engine/orchestrate";
+import { checkDailyGuard, checkGuard } from "@/engine/guard";
 
 export const runtime = "nodejs";
 
@@ -68,6 +70,8 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "잘못된 요청 본문" }, { status: 400 });
   }
+  const guard = await checkGuard(req, (JSON.stringify(body) ?? "").length, { consumeDaily: false });
+  if (!guard.ok) return NextResponse.json({ error: guard.message }, { status: guard.status });
 
   if (!body?.logline?.trim()) {
     return NextResponse.json({ error: "logline은 필수입니다." }, { status: 400 });
@@ -87,7 +91,7 @@ export async function POST(req: NextRequest) {
       if (apiKey) {
         model = MODEL_MAIN;
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
-        const client = new Anthropic({ apiKey });
+        const client = makeAnthropicClient(apiKey);
         runner = async ({ system, user }) => {
           const once = async (extra = "") => {
             const resp = await client.messages.create({
@@ -113,6 +117,8 @@ export async function POST(req: NextRequest) {
           }
         };
         engine = "anthropic";
+        const dailyGuard = await checkDailyGuard(req);
+        if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
       } else {
         runner = makeMockRunner(input);
         engine = "mock";
@@ -142,7 +148,7 @@ export async function POST(req: NextRequest) {
     const model = MODEL_MAIN;
 
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey });
+    const client = makeAnthropicClient(apiKey);
 
     const userMsg = JSON.stringify({
       logline: input.logline,
@@ -176,6 +182,9 @@ export async function POST(req: NextRequest) {
         .join("\n");
       return extractJson(text) as Story;
     };
+
+    const dailyGuard = await checkDailyGuard(req);
+    if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
 
     let story: Story;
     try {

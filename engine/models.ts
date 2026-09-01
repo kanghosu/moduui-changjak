@@ -17,4 +17,6 @@ export const MODEL_MAIN = process.env.ANTHROPIC_MODEL || "claude-opus-5";
 
 /** 발화 추출용. 추출 품질이 제품 생명선(PRD v2 §4)이라 품질 우선 단계에서는
  *  본생성과 같은 모델을 쓴다. 다운그레이드 기준 충족 시 env로만 교체한다. */
+// 배포 환경에서는 ANTHROPIC_MODEL_LIGHT를 저렴한 모델로 내려 비용을 낮출 수 있다.
+// 하향 여부는 docs/model-policy.md의 기준으로 판단한다.
 export const MODEL_LIGHT = process.env.ANTHROPIC_MODEL_LIGHT || "claude-opus-5";

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { makeAnthropicClient } from "@/engine/anthropic-client";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
 import path from "path";
 import type { Story } from "@/engine/schema";
 import libraryRaw from "@/engine/benchmark-library.json";
+import { checkDailyGuard, checkGuard } from "@/engine/guard";
 
 export const runtime = "nodejs";
 
@@ -25,6 +27,8 @@ interface Suggestion { label: string; source: string; text: string; draft: strin
 export async function POST(req: NextRequest) {
   let body: { index?: number; benchmarkName?: string; logline?: string; genre?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "잘못된 요청" }, { status: 400 }); }
+  const guard = await checkGuard(req, (JSON.stringify(body) ?? "").length, { consumeDaily: false });
+  if (!guard.ok) return NextResponse.json({ error: guard.message }, { status: guard.status });
   const index = Number(body?.index);
   if (!index || index < 1 || index > 24) return NextResponse.json({ error: "블록 번호(1~24)가 필요합니다." }, { status: 400 });
 
@@ -50,7 +54,9 @@ export async function POST(req: NextRequest) {
     try {
       const model = MODEL_MAIN;
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      const client = new Anthropic({ apiKey });
+      const client = makeAnthropicClient(apiKey);
+      const dailyGuard = await checkDailyGuard(req);
+      if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
       const resp = await client.messages.create({
         model, ...buildRequestParams(model!, { maxTokens: 1200 }),
         system: `너는 욕망의 레시피 작법 코치다. 블록 ${index}(${bb.function})의 사건 후보 3개를 JSON으로만 출력: {"suggestions":[{"label":"...","text":"...","draft":"2~3문장 사건"}]}. 벤치마크(${bench!.title})의 같은 블록: ${bb.subtitle} / ${(bb.summary || "").slice(0, 200)}. 구조 기능은 지키되 소재는 사용자 로그라인을 따를 것.`,

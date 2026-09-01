@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { makeAnthropicClient } from "@/engine/anthropic-client";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import {
   QUESTION_POOL, MAX_QUESTIONS, missingQuestions,
@@ -8,6 +9,7 @@ import {
 import { scoreBenchmarks } from "@/engine/matcher";
 import { heuristicExtract } from "@/engine/extract-heuristic";
 import { MODEL_LIGHT } from "@/engine/models";
+import { checkDailyGuard, checkGuard } from "@/engine/guard";
 
 export const runtime = "nodejs";
 
@@ -61,6 +63,8 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "잘못된 요청 본문" }, { status: 400 });
   }
+  const guard = await checkGuard(req, (JSON.stringify(body) ?? "").length, { consumeDaily: false });
+  if (!guard.ok) return NextResponse.json({ error: guard.message }, { status: guard.status });
   const utterance = body?.utterance?.trim();
   if (!utterance) {
     return NextResponse.json({ error: "하고 싶은 이야기를 먼저 쏟아내 주세요." }, { status: 400 });
@@ -86,7 +90,7 @@ export async function POST(req: NextRequest) {
     } else {
       model = MODEL_LIGHT;
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      const client = new Anthropic({ apiKey });
+      const client = makeAnthropicClient(apiKey);
       const system = [
         "너는 스토리 창작 코치의 '듣기 담당'이다. 사용자가 두서없이 쏟아낸 발화에서 이야기 구성 요소를 추출한다.",
         "규칙:",
@@ -99,6 +103,9 @@ export async function POST(req: NextRequest) {
         "",
         "키 의미: scene=인상적인 장면, heroDesc=주인공은 어떤 사람, heroName=주인공 이름, heroWant=주인공이 겉으로 원하는 것, heroNeed=진짜 필요한 것(결핍), premise=사건·소재, theme=주제, ending=원하는 결말·도착점, genre=장르, tone=톤, era=시대·배경, benchmark=언급된 참고 영화 제목, choice=주인공의 갈림길·선택, hook=본인만의 차별점",
       ].join("\n");
+
+      const dailyGuard = await checkDailyGuard(req);
+      if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
 
       const once = async (extra = "") => {
         const resp = await client.messages.create({
