@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
+import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
+import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
 import path from "path";
 import { validateStructure, type Story } from "@/engine/schema";
@@ -9,6 +12,7 @@ import {
   type OrchestrateFiles,
   type StageRunner,
 } from "@/engine/orchestrate";
+import { checkDailyGuard, checkGuard } from "@/engine/guard";
 
 export const runtime = "nodejs";
 
@@ -66,6 +70,8 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "잘못된 요청 본문" }, { status: 400 });
   }
+  const guard = await checkGuard(req, (JSON.stringify(body) ?? "").length, { consumeDaily: false });
+  if (!guard.ok) return NextResponse.json({ error: guard.message }, { status: guard.status });
 
   if (!body?.logline?.trim()) {
     return NextResponse.json({ error: "logline은 필수입니다." }, { status: 400 });
@@ -81,19 +87,24 @@ export async function POST(req: NextRequest) {
       let runner: StageRunner;
       let engine: string;
       let model: string | undefined;
+      let fallbackFrom: "anthropic" | undefined;
 
       if (apiKey) {
-        model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+        model = MODEL_MAIN;
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
-        const client = new Anthropic({ apiKey });
+        const client = makeAnthropicClient(apiKey);
         runner = async ({ system, user }) => {
           const once = async (extra = "") => {
             const resp = await client.messages.create({
               model: model!,
-              max_tokens: 8000,
+              ...buildRequestParams(model!, { maxTokens: 8000 }),
               system,
               messages: [{ role: "user", content: user + extra }],
             });
+            // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
+            // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+            const _refusal = refusalOf(resp);
+            if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
             const text = resp.content
               .filter((b): b is { type: "text"; text: string } => b.type === "text")
               .map((b) => b.text)
@@ -107,14 +118,32 @@ export async function POST(req: NextRequest) {
           }
         };
         engine = "anthropic";
+        const dailyGuard = await checkDailyGuard(req);
+        if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
       } else {
         runner = makeMockRunner(input);
         engine = "mock";
       }
 
-      const { story, trace } = await orchestrate(input, files, runner);
-      const issues = validateStructure(story);
-      return NextResponse.json({ story, issues, trace, engine, model, mode: "pipeline" });
+      let outcome: Awaited<ReturnType<typeof orchestrate>>;
+      try {
+        outcome = await orchestrate(input, files, runner);
+      } catch (error) {
+        if (engine !== "anthropic" || !isFallbackWorthy(error)) throw error;
+        const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+          ? error.status
+          : undefined;
+        const message = error instanceof Error ? error.message : "알 수 없는 Anthropic 오류";
+        console.error("[AI fallback]", "generate", status, message);
+        // checkDailyGuard가 실제 호출 직전에 올린 카운터는 호출 실패 후에도 시도 비용으로 유지한다.
+        runner = makeMockRunner(input);
+        outcome = await orchestrate(input, files, runner);
+        engine = "mock";
+        model = undefined;
+        fallbackFrom = "anthropic";
+      }
+      const issues = validateStructure(outcome.story);
+      return NextResponse.json({ story: outcome.story, issues, trace: outcome.trace, engine, model, mode: "pipeline", fallbackFrom });
     }
 
     // ── 단일 호출 모드 ───────────────────────────────
@@ -133,10 +162,10 @@ export async function POST(req: NextRequest) {
     ]);
 
     const system = buildSystemPrompt({ template, skill, blocks, ontology, schema });
-    const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+    const model = MODEL_MAIN;
 
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey });
+    const client = makeAnthropicClient(apiKey);
 
     const userMsg = JSON.stringify({
       logline: input.logline,
@@ -156,10 +185,14 @@ export async function POST(req: NextRequest) {
     const callOnce = async (extra = ""): Promise<Story> => {
       const resp = await client.messages.create({
         model,
-        max_tokens: 8000,
+        ...buildRequestParams(model!, { maxTokens: 8000 }),
         system,
         messages: [{ role: "user", content: userMsg + extra }],
       });
+      // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
+      // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+      const _refusal = refusalOf(resp);
+      if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
       const text = resp.content
         .filter((b): b is { type: "text"; text: string } => b.type === "text")
         .map((b) => b.text)
@@ -167,17 +200,32 @@ export async function POST(req: NextRequest) {
       return extractJson(text) as Story;
     };
 
+    const dailyGuard = await checkDailyGuard(req);
+    if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
+
     let story: Story;
+    let fallbackFrom: "anthropic" | undefined;
     try {
-      story = await callOnce();
-    } catch {
-      story = await callOnce("\n\n반드시 스키마를 만족하는 JSON 객체 하나만 출력하라. 코드펜스/설명 금지.");
+      try {
+        story = await callOnce();
+      } catch {
+        story = await callOnce("\n\n반드시 스키마를 만족하는 JSON 객체 하나만 출력하라. 코드펜스/설명 금지.");
+      }
+    } catch (error) {
+      if (!isFallbackWorthy(error)) throw error;
+      const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+        ? error.status
+        : undefined;
+      const message = error instanceof Error ? error.message : "알 수 없는 Anthropic 오류";
+      console.error("[AI fallback]", "generate", status, message);
+      // checkDailyGuard가 실제 호출 직전에 올린 카운터는 호출 실패 후에도 시도 비용으로 유지한다.
+      story = mockGenerate(input);
+      fallbackFrom = "anthropic";
     }
 
     const issues = validateStructure(story);
-    return NextResponse.json({ story, issues, engine: "anthropic", model, mode: "single" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "엔진 호출 실패";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ story, issues, engine: fallbackFrom ? "mock" : "anthropic", model: fallbackFrom ? undefined : model, mode: "single", fallbackFrom });
+  } catch {
+    return NextResponse.json({ error: "엔진 호출에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Story } from "@/engine/schema";
 import { validateStructure } from "@/engine/schema";
+import { syncWorkFromProject } from "@/engine/library";
 
 interface Project {
   story: Story;
@@ -11,6 +12,7 @@ interface Project {
   confirmed: Record<number, boolean>;
   snapshots: { ts: number; story: Story }[];
   originals?: Record<number, string>; // 블록별 처음 초안 (수정 대비용)
+  workId?: string;
 }
 interface Suggestion { label: string; source?: string; text: string; draft?: string }
 
@@ -38,7 +40,6 @@ function load(): Project | null {
     return p;
   } catch { return null; }
 }
-function persist(p: Project) { localStorage.setItem(KEY, JSON.stringify(p)); }
 
 export default function Studio() {
   const [proj, setProj] = useState<Project | null>(null);
@@ -49,8 +50,19 @@ export default function Studio() {
   const [sugNote, setSugNote] = useState("");
   const [beat, setBeat] = useState("");
   const [savedFlash, setSavedFlash] = useState(false);
+  const [storageNotice, setStorageNotice] = useState<string | null>(null);
   const [todayChars, setTodayChars] = useState(0);
   const [theme, setTheme] = useState<string>("paper");
+
+  function persist(p: Project) {
+    localStorage.setItem(KEY, JSON.stringify(p));
+    try {
+      syncWorkFromProject(p);
+      setStorageNotice(null);
+    } catch (cause: unknown) {
+      setStorageNotice(cause instanceof Error ? cause.message : "서재에 최신 내용을 저장하지 못했습니다.");
+    }
+  }
 
   function pickTheme(id: string) {
     setTheme(id);
@@ -120,6 +132,7 @@ export default function Studio() {
   }
   function snapshot() {
     if (!proj) return;
+    // 스냅샷은 최근 10개만 보관하며, 11번째부터는 이 화면에서 복원할 수 없다.
     const next = { ...proj, snapshots: [...proj.snapshots, { ts: Date.now(), story: proj.story }].slice(-10) };
     setProj(next); persist(next);
   }
@@ -161,6 +174,12 @@ export default function Studio() {
           {warns.length > 0 && <span className="pill pill-warn">▲ {warns.length}</span>}
           <button onClick={snapshot} className="btn-ghost !px-2.5 !py-1.5 text-xs">📸 스냅샷 {proj.snapshots.length > 0 ? proj.snapshots.length : ""}</button>
         </header>
+
+        {storageNotice && (
+          <p className="card mb-4 p-3 text-xs" style={{ color: "var(--c-danger)" }} role="alert">
+            서재에 최신 내용을 반영하지 못했어요. 작업실의 현재 작업은 저장되어 있습니다. {storageNotice}
+          </p>
+        )}
 
         {/* 시스템 단계 + 테마 선택 */}
         <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[11px]">
@@ -223,7 +242,7 @@ export default function Studio() {
             {benchBlock && (
               <p className="mb-3 rounded-lg px-3 py-2 text-xs leading-relaxed" style={{ background: "var(--c-surface2)", color: "var(--c-sub)" }}>
                 📖 <b>{bench!.title}</b>의 같은 블록 — {benchBlock.subtitle && <b>{benchBlock.subtitle}: </b>}{(benchBlock.summary || "").slice(0, 170)}
-                <span className="ml-1 rounded-full px-1.5 py-0.5 text-[10px]" style={{ background: "var(--c-surface)", border: "1px solid var(--c-line)" }}>거장 확정</span>
+                <span className="ml-1 rounded-full px-1.5 py-0.5 text-[10px]" style={{ background: "var(--c-surface)", border: "1px solid var(--c-line)" }}>{bench?.origin === "master" ? "거장 확정" : "AI 분석 초안"}</span>
               </p>
             )}
 

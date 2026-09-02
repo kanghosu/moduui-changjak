@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
+import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
+import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
 import path from "path";
 import type { Story } from "@/engine/schema";
 import libraryRaw from "@/engine/benchmark-library.json";
+import { checkDailyGuard, checkGuard } from "@/engine/guard";
 
 export const runtime = "nodejs";
 
@@ -23,6 +27,8 @@ interface Suggestion { label: string; source: string; text: string; draft: strin
 export async function POST(req: NextRequest) {
   let body: { index?: number; benchmarkName?: string; logline?: string; genre?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "잘못된 요청" }, { status: 400 }); }
+  const guard = await checkGuard(req, (JSON.stringify(body) ?? "").length, { consumeDaily: false });
+  if (!guard.ok) return NextResponse.json({ error: guard.message }, { status: guard.status });
   const index = Number(body?.index);
   if (!index || index < 1 || index > 24) return NextResponse.json({ error: "블록 번호(1~24)가 필요합니다." }, { status: 400 });
 
@@ -42,22 +48,40 @@ export async function POST(req: NextRequest) {
   } catch { /* 지침 없으면 생략 */ }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  let fallbackFrom: "anthropic" | undefined;
 
   // ── 키 있으면: AI가 실제 사건 3안 생성 ──
   if (apiKey && bb) {
+    const model = MODEL_MAIN;
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    const client = makeAnthropicClient(apiKey);
+    const dailyGuard = await checkDailyGuard(req);
+    if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
     try {
-      const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
-      const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      const client = new Anthropic({ apiKey });
       const resp = await client.messages.create({
-        model, max_tokens: 1200,
+        model, ...buildRequestParams(model!, { maxTokens: 1200 }),
         system: `너는 욕망의 레시피 작법 코치다. 블록 ${index}(${bb.function})의 사건 후보 3개를 JSON으로만 출력: {"suggestions":[{"label":"...","text":"...","draft":"2~3문장 사건"}]}. 벤치마크(${bench!.title})의 같은 블록: ${bb.subtitle} / ${(bb.summary || "").slice(0, 200)}. 구조 기능은 지키되 소재는 사용자 로그라인을 따를 것.`,
         messages: [{ role: "user", content: `로그라인: ${body.logline || ""} / 장르: ${body.genre || ""}${genreLine ? ` / 장르지침: ${genreLine}` : ""}` }],
       });
+      // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
+      // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+      const _refusal = refusalOf(resp);
+      if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
       const text = resp.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("");
       const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
       return NextResponse.json({ suggestions: parsed.suggestions?.slice(0, 3) ?? [], engine: "anthropic" });
-    } catch { /* 폴백으로 진행 */ }
+    } catch (error) {
+      if (!isFallbackWorthy(error)) {
+        return NextResponse.json({ error: "AI 추천에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
+      }
+      const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+        ? error.status
+        : undefined;
+      const message = error instanceof Error ? error.message : "알 수 없는 Anthropic 오류";
+      console.error("[AI fallback]", "suggest", status, message);
+      // checkDailyGuard가 실제 호출 직전에 올린 카운터는 호출 실패 후에도 시도 비용으로 유지한다.
+      fallbackFrom = "anthropic";
+    }
   }
 
   // ── 키 없으면: 실데이터 기반 코칭 카드 3장 (거장 벤치마크 + 장르 지침 + 세계 표준) ──
@@ -95,5 +119,6 @@ export async function POST(req: NextRequest) {
     suggestions: suggestions.slice(0, 3),
     engine: "coach",
     note: "ANTHROPIC_API_KEY 연결 시 내 소재로 쓴 실제 사건 3안이 생성됩니다.",
+    fallbackFrom,
   });
 }

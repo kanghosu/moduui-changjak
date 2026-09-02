@@ -115,9 +115,11 @@ export default function Home() {
         <span className="flex-1" />
         <nav className="flex items-center gap-4 text-[15px]">
           <button onClick={resetHome} className="border-b-2 border-cinema-amber pb-0.5 font-semibold text-cinema-amber">탐색</button>
+          <Link href="/create" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">만들기</Link>
           <Link href="/write" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">글쓰기</Link>
           <Link href="/studio" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">작업실</Link>
           <Link href="/library" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">내 서재</Link>
+          <Link href="/about" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">소개</Link>
           <button
             onClick={() => setMode(mode === "dark" ? "light" : "dark")}
             className="rounded-full border border-cinema-line px-3 py-1.5 text-sm transition-colors hover:border-cinema-dim"
@@ -137,7 +139,7 @@ export default function Home() {
             <em>개봉</em>합니다
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-cinema-sub">
-            좋아하는 영화의 뼈대(4막·24블록)를 빌려, 10분 만에 첫 설계도를 세워요.
+            좋아하는 영화의 뼈대(4막·24블록)를 빌려, 첫 설계도를 세워요.
           </p>
 
           <div className="seg glass mb-3 mt-7">

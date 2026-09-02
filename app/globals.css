@@ -1,3 +1,5 @@
+@import "../styles/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -57,8 +59,13 @@ html[data-mode="light"] .btn-ghost {
 body {
   background: var(--c-bg);
   color: var(--c-text);
-  font-family: "Pretendard Variable", Pretendard, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-family-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .input {

@@ -95,7 +95,9 @@ export function validateStructure(s: Story): ValidationIssue[] {
 
   if (!s.characters.some((c) => c.role === "protagonist"))
     issues.push({ level: "error", message: "주인공이 없습니다." });
-  if (!s.characters.some((c) => c.role === "antagonist"))
+  if (s.characters.length <= 1)
+    issues.push({ level: "warn", message: "인물 자료가 입력되지 않았습니다" });
+  else if (!s.characters.some((c) => c.role === "antagonist"))
     issues.push({ level: "warn", message: "적대자가 없습니다." });
 
   return issues;

@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import type { Story } from "@/engine/schema";
+import { localWorkStore, ensureMigrated, syncWorkFromProject, type Work, type CurrentProject } from "@/engine/library";
+import { exportWork, exportWorks, filenameFor, parseImport, safeFileName, workToMarkdown } from "@/engine/export";
 
 interface Project {
   story: Story;
@@ -10,6 +12,7 @@ interface Project {
   confirmed: Record<number, boolean>;
   snapshots: { ts: number; story: Story }[];
   originals?: Record<number, string>;
+  workId?: string;
 }
 
 // 내 서재 — 내 프로젝트·스냅샷·초안이 사는 곳
@@ -19,9 +22,14 @@ export default function Library() {
   const [theme, setTheme] = useState("paper");
   const [ready, setReady] = useState(false);
   const [flash, setFlash] = useState("");
+  const [flashTone, setFlashTone] = useState<"ok" | "warn">("ok");
+  const [works, setWorks] = useState<Work[]>([]);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
+      ensureMigrated();
+      setWorks(localWorkStore.list());
       const raw = localStorage.getItem("mc_project");
       if (raw) {
         const p = JSON.parse(raw);
@@ -39,6 +47,27 @@ export default function Library() {
     setReady(true);
   }, []);
 
+  /** 작품을 작업실이 보는 현재 슬롯에 올린다 */
+  function openWork(w: Work) {
+    const current: CurrentProject = {
+      story: w.story,
+      benchmarkName: w.benchmarkName,
+      confirmed: w.confirmed ?? {},
+      snapshots: w.snapshots ?? [],
+      originals: w.originals ?? {},
+      workId: w.id,
+    };
+    localStorage.setItem("mc_project", JSON.stringify(current));
+    location.href = "/studio";
+  }
+
+  function removeWork(w: Work) {
+    if (!confirm(`「${w.title}」을(를) 서재에서 지울까요? 되돌릴 수 없어요.`)) return;
+    localWorkStore.remove(w.id);
+    setWorks(localWorkStore.list());
+    showFlash(`「${w.title}」을(를) 지웠어요`);
+  }
+
   function restore(ts: number) {
     if (!proj) return;
     const snap = proj.snapshots.find((s) => s.ts === ts);
@@ -46,8 +75,73 @@ export default function Library() {
     const next = { ...proj, story: snap.story };
     setProj(next);
     localStorage.setItem("mc_project", JSON.stringify(next));
-    setFlash(`${fmt(ts)} 버전으로 복원했어요 — 작업실에서 이어가세요`);
-    setTimeout(() => setFlash(""), 3000);
+    try {
+      syncWorkFromProject(next);
+    } catch (cause: unknown) {
+      showFlash(cause instanceof Error ? `복원했지만 서재 저장에 실패했어요: ${cause.message}` : "복원했지만 서재 저장에 실패했어요.", "warn");
+      return;
+    }
+    showFlash(`${fmt(ts)} 버전으로 복원했어요 — 작업실에서 이어가세요`);
+  }
+
+  function showFlash(message: string, tone: "ok" | "warn" = "ok") {
+    setFlashTone(tone);
+    setFlash(message);
+    window.setTimeout(() => setFlash(""), 3000);
+  }
+
+  function downloadText(content: string, filename: string, mimeType: string) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadJson(w: Work) {
+    const now = Date.now();
+    downloadText(exportWork(w, now), filenameFor(w, "json", now), "application/json;charset=utf-8");
+    showFlash(`「${w.title}」 JSON을 내보냈어요`);
+  }
+
+  function downloadMarkdown(w: Work) {
+    const now = Date.now();
+    downloadText(workToMarkdown(w), filenameFor(w, "md", now), "text/markdown;charset=utf-8");
+    showFlash(`「${w.title}」 Markdown을 내보냈어요`);
+  }
+
+  function downloadAll() {
+    const now = Date.now();
+    downloadText(exportWorks(works, now), safeFileName("모두의 창작", "json", now), "application/json;charset=utf-8");
+    showFlash(`서재의 ${works.length}편을 내보냈어요`);
+  }
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+
+    try {
+      const raw = await file.text();
+      const result = parseImport(raw, localWorkStore.list().map((work) => work.id));
+      if (!result.ok) {
+        showFlash(result.reason, "warn");
+        return;
+      }
+      for (const work of result.works) localWorkStore.save(work);
+      setWorks(localWorkStore.list());
+      showFlash(`${result.works.length}편을 가져왔어요`);
+    } catch (cause: unknown) {
+      if (cause instanceof Error) {
+        showFlash(`가져오기에 실패했어요: ${cause.message}`, "warn");
+        return;
+      }
+      throw cause;
+    }
   }
 
   const fmt = (ts: number) => new Date(ts).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -63,12 +157,15 @@ export default function Library() {
           <Link href="/studio" className="btn-ghost !px-2.5 !py-1.5 text-xs">작업실</Link>
           <h1 className="text-[15px] font-bold">📚 내 서재</h1>
           <span className="flex-1" />
+          <button type="button" onClick={downloadAll} className="btn-ghost text-xs">전체 내보내기</button>
+          <button type="button" onClick={() => importInputRef.current?.click()} className="btn-ghost text-xs">가져오기</button>
+          <input ref={importInputRef} type="file" accept="application/json" onChange={handleImport} className="sr-only" aria-label="가져올 JSON 파일" />
           <span className="pill pill-muted">작품은 이 브라우저에 저장돼요</span>
         </header>
 
-        {flash && <p className="pill pill-ok mb-4 inline-block">✓ {flash}</p>}
+        {flash && <p className={`pill ${flashTone === "warn" ? "pill-warn" : "pill-ok"} mb-4 inline-block`} role={flashTone === "warn" ? "alert" : undefined}>{flashTone === "ok" ? "✓ " : ""}{flash}</p>}
 
-        {!proj && draftLen === 0 && (
+        {works.length === 0 && !proj && draftLen === 0 && (
           <div className="card p-10 text-center">
             <p className="mb-2 text-lg font-bold">아직 서재가 비어 있어요</p>
             <p className="mb-4 text-sm" style={{ color: "var(--c-sub)" }}>
@@ -76,6 +173,38 @@ export default function Library() {
             </p>
             <Link href="/" className="btn-amber inline-block">🎬 첫 이야기 시작하기</Link>
           </div>
+        )}
+
+        {works.length > 0 && (
+          <section className="mb-5">
+            <div className="mb-2 flex flex-wrap items-baseline gap-2">
+              <h2 className="text-base font-bold">내 이야기 {works.length}편</h2>
+              <span className="text-xs" style={{ color: "var(--c-dim)" }}>
+                새 이야기를 만들어도 여기 있는 작품은 지워지지 않아요.
+              </span>
+              <span className="flex-1" />
+              <Link href="/create" className="btn-ghost !px-2.5 !py-1 text-xs">+ 새 이야기</Link>
+            </div>
+            <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {works.map((w) => (
+                <li key={w.id} className="card p-4">
+                  <h3 className="mb-1 text-sm font-bold leading-snug">{w.title}</h3>
+                  <p className="mb-2 line-clamp-2 text-xs" style={{ color: "var(--c-sub)" }}>{w.story.logline}</p>
+                  <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                    <span className="pill pill-muted">{fmt(w.updatedAt)}</span>
+                    {w.benchmarkName && <span className="pill pill-line">뼈대: {w.benchmarkName}</span>}
+                    {w.story.hookNote && <span className="pill pill-ok">후크 ✓</span>}
+                  </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => openWork(w)} className="btn-amber text-xs">작업실에서 열기</button>
+                      <button onClick={() => removeWork(w)} className="btn-ghost text-xs">지우기</button>
+                      <button onClick={() => downloadJson(w)} className="btn-ghost text-xs">JSON 내보내기</button>
+                      <button onClick={() => downloadMarkdown(w)} className="btn-ghost text-xs">Markdown 내보내기</button>
+                    </div>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {proj && (
