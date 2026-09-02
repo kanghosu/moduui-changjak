@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { callModelJson, RefusalError, extractJson, textOf } from "../engine/anthropic-call.ts";
+import { callModelJson, RefusalError, extractJson, textOf, cachedSystem, cacheTtl } from "../engine/anthropic-call.ts";
 import { fallbackModelFor } from "../engine/model-capabilities.ts";
 
 /** 지정한 시나리오대로 응답하는 가짜 클라이언트 */
@@ -99,4 +99,40 @@ test("텍스트 추출은 사고 블록을 건너뛴다", () => {
 test("코드펜스로 감싼 JSON도 파싱한다", () => {
   assert.deepEqual(extractJson('```json\n{"a":1}\n```'), { a: 1 });
   assert.throws(() => extractJson("JSON이 없다"));
+});
+
+// ── 프롬프트 캐싱 ──────────────────────────────
+// 시스템 프롬프트는 요청마다 같으므로 캐시 접두사로 보낸다. 재시도가 접두사를 바꾸면
+// 캐시를 못 맞으므로 그 약속을 테스트로 고정한다.
+
+test("시스템 프롬프트에 캐시 표시가 붙는다 (기본 5분)", () => {
+  delete process.env.ANTHROPIC_CACHE_TTL;
+  const blocks = cachedSystem("방법론 지침");
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].type, "text");
+  assert.equal(blocks[0].text, "방법론 지침");
+  assert.deepEqual(blocks[0].cache_control, { type: "ephemeral" });
+  assert.deepEqual(cachedSystem(""), [], "빈 텍스트 블록을 보내면 400이다");
+});
+
+test("ANTHROPIC_CACHE_TTL=1h 면 1시간 TTL을 붙인다", () => {
+  process.env.ANTHROPIC_CACHE_TTL = "1h";
+  try {
+    assert.equal(cacheTtl(), "1h");
+    assert.deepEqual(cachedSystem("지침")[0].cache_control, { type: "ephemeral", ttl: "1h" });
+  } finally {
+    delete process.env.ANTHROPIC_CACHE_TTL;
+  }
+  assert.equal(cacheTtl(), "5m", "그 외 값은 전부 5분");
+});
+
+test("호출 헬퍼는 시스템을 캐시 블록으로 보내고, 재시도에서도 접두사를 바꾸지 않는다", async () => {
+  delete process.env.ANTHROPIC_CACHE_TTL;
+  const { client, calls } = fakeClient((_m, n) => ({ text: n === 1 ? "JSON 없음" : '{"ok":true}' }));
+  await callModelJson(client, "claude-opus-5", { system: "긴 방법론 지침", user: "u", maxTokens: 100 });
+  assert.equal(calls.length, 2);
+  const sys = calls[0].body.system as { text: string; cache_control?: unknown }[];
+  assert.equal(sys[0].text, "긴 방법론 지침");
+  assert.deepEqual(sys[0].cache_control, { type: "ephemeral" });
+  assert.deepEqual(calls[1].body.system, calls[0].body.system, "재시도가 캐시 접두사를 바꾸면 캐시를 못 맞는다");
 });

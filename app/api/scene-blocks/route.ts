@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
+import { cachedSystem, logUsage } from "@/engine/anthropic-call";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { MODEL_MAIN } from "@/engine/models";
 import path from "node:path";
@@ -75,11 +76,12 @@ async function callAnthropic(sceneText: string, blockGuide: string): Promise<rea
   const response = await client.messages.create({
     model,
     ...buildRequestParams(model!, { maxTokens: 1_800 }),
-    system: buildSystemPrompt(blockGuide, conceptContext),
+    system: cachedSystem(buildSystemPrompt(blockGuide, conceptContext)),
     messages: [{ role: "user", content: `장면:\n${sceneText}` }],
   });
   // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
   // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+  logUsage("scene-blocks", response);
   const _refusal = refusalOf(response);
   if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
   const text = response.content

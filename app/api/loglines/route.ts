@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     if (!dailyGuard.ok) return NextResponse.json({ error: dailyGuard.message }, { status: dailyGuard.status });
     try {
       const called = await callModelJson<{ options?: LoglineOption[] }>(client, model, {
-        system, user: userMsg, maxTokens: 2000,
+        system, user: userMsg, maxTokens: 2000, route: "loglines",
       });
       const parsed = called.data;
 

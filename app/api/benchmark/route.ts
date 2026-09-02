@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
+import { cachedSystem, logUsage } from "@/engine/anthropic-call";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import { MODEL_MAIN } from "@/engine/models";
 import { promises as fs } from "fs";
@@ -203,11 +204,12 @@ ${examples}
       const resp = await client.messages.create({
         model,
         ...buildRequestParams(model!, { maxTokens: 8000 }),
-        system,
+        system: cachedSystem(system),
         messages: [{ role: "user", content: `영화: ${title}${body.year ? ` (${body.year})` : ""}${body.genre ? ` / 장르: ${body.genre}` : ""}${body.info ? `\n참고: ${body.info}` : ""}${extra}` }],
       });
       // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
       // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+      logUsage("benchmark", resp);
       const _refusal = refusalOf(resp);
       if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
       const text = resp.content

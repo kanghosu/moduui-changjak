@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isFallbackWorthy, makeAnthropicClient } from "@/engine/anthropic-client";
+import { cachedSystem, logUsage } from "@/engine/anthropic-call";
 import { buildRequestParams, refusalOf } from "@/engine/model-capabilities";
 import {
   QUESTION_POOL, MAX_QUESTIONS, missingQuestions,
@@ -117,11 +118,12 @@ export async function POST(req: NextRequest) {
           const resp = await client.messages.create({
             model: model!,
             ...buildRequestParams(model!, { maxTokens: 1200 }),
-            system,
+            system: cachedSystem(system),
             messages: [{ role: "user", content: utterance + extra }],
           });
           // 안전 분류기가 거부하면 HTTP 200에 stop_reason="refusal"이 온다.
           // 확인하지 않으면 빈 content를 정상 응답으로 착각해 파싱 오류로 둔갑한다.
+          logUsage("extract", resp);
           const _refusal = refusalOf(resp);
           if (_refusal.refused) throw new Error(`모델이 요청을 거부했습니다${_refusal.category ? ` (${_refusal.category})` : ""}.`);
           const text = resp.content
