@@ -153,7 +153,7 @@ export default function Library() {
     <main className="paper min-h-screen" data-theme={theme}>
       <div className="mx-auto max-w-4xl px-5 py-6">
         <header className="mb-6 flex flex-wrap items-center gap-2.5">
-          <Link href="/" className="btn-ghost !px-2.5 !py-1.5 text-xs">🎬 탐색</Link>
+          <Link href="/explore" className="btn-ghost !px-2.5 !py-1.5 text-xs">🎬 탐색</Link>
           <Link href="/studio" className="btn-ghost !px-2.5 !py-1.5 text-xs">작업실</Link>
           <h1 className="text-[15px] font-bold">📚 내 서재</h1>
           <span className="flex-1" />
@@ -171,7 +171,7 @@ export default function Library() {
             <p className="mb-4 text-sm" style={{ color: "var(--c-sub)" }}>
               탐색에서 좋아하는 영화의 뼈대를 고르고 첫 설계도를 만들어 보세요. 처음이라면 🎲 예시로 채우기가 제일 빨라요.
             </p>
-            <Link href="/" className="btn-amber inline-block">🎬 첫 이야기 시작하기</Link>
+            <Link href="/explore" className="btn-amber inline-block">🎬 첫 이야기 시작하기</Link>
           </div>
         )}
 
@@ -224,7 +224,7 @@ export default function Library() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/studio" className="btn-amber text-sm">🛠️ 작업실에서 이어가기</Link>
-              <Link href="/" className="btn-ghost text-sm">다른 뼈대 탐색</Link>
+              <Link href="/explore" className="btn-ghost text-sm">다른 뼈대 탐색</Link>
             </div>
           </section>
         )}
@@ -250,7 +250,7 @@ export default function Library() {
           <section className="card p-5">
             <h3 className="mb-1 text-sm font-bold">✍️ 쓰다 만 초안</h3>
             <p className="mb-3 text-xs" style={{ color: "var(--c-dim)" }}>아이디어 노트와 스토리 프로필에 적어둔 {draftLen.toLocaleString()}자가 자동 저장돼 있어요.</p>
-            <Link href="/" className="btn-ghost inline-block text-sm">이어서 쓰기 →</Link>
+            <Link href="/explore" className="btn-ghost inline-block text-sm">이어서 쓰기 →</Link>
           </section>
         )}
 

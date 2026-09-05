@@ -85,7 +85,7 @@ export default function AboutPage() {
               첫 설계도 만들기
             </Link>
             <Link
-              href="/"
+              href="/explore"
               className="inline-flex min-h-ds-10 items-center justify-center rounded-ds-md border border-border bg-surface px-ds-5 py-ds-2 text-ds-body-sm font-semibold text-text transition-colors hover:border-accent hover:bg-elevated"
             >
               영화 라이브러리 둘러보기

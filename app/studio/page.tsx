@@ -144,7 +144,7 @@ export default function Studio() {
         <div className="card max-w-md p-8 text-center">
           <p className="mb-2 text-lg font-semibold">아직 작업 중인 이야기가 없어요</p>
           <p className="mb-4 text-sm" style={{ color: "var(--c-sub)" }}>탐색에서 뼈대를 고르고 「내 24블록 설계」를 누르면 여기로 이어져요.</p>
-          <Link href="/" className="btn-amber inline-block">🎬 탐색으로 가기</Link>
+          <Link href="/explore" className="btn-amber inline-block">🎬 탐색으로 가기</Link>
         </div>
       </main>
     );
@@ -160,7 +160,7 @@ export default function Studio() {
       <div className="mx-auto max-w-6xl px-5 py-6">
         {/* 상단 바 */}
         <header className="mb-5 flex flex-wrap items-center gap-2.5">
-          <Link href="/" className="btn-ghost !px-2.5 !py-1.5 text-xs" title="탐색(홈)으로">🎬 탐색</Link>
+          <Link href="/explore" className="btn-ghost !px-2.5 !py-1.5 text-xs" title="탐색(홈)으로">🎬 탐색</Link>
           <Link href="/library" className="btn-ghost !px-2.5 !py-1.5 text-xs">내 서재</Link>
           <h1 className="max-w-[380px] truncate text-[15px] font-bold">{proj.story.logline}</h1>
           {proj.benchmarkName && <span className="pill pill-line">뼈대: {proj.benchmarkName}</span>}

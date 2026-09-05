@@ -17,6 +17,12 @@ export type GuardResult =
 export interface GuardCheckOptions {
   /** 초기 요청 검사에서는 false로 두고, 실제 모델 호출 직전에 checkDailyGuard를 호출한다. */
   readonly consumeDaily?: boolean;
+  /**
+   * 분당 카운터를 나눌 이름. 기본값 "ai"는 모델을 호출하는 라우트가 공유한다.
+   * 대기리스트처럼 모델을 쓰지 않는 폼은 별도 이름을 줘서, 폼 제출이
+   * 창작 기능의 분당 한도를 갉아먹지 않게 한다.
+   */
+  readonly scope?: string;
 }
 
 const DEFAULTS = {
@@ -143,8 +149,11 @@ function dailyKey(): string {
   return `guard:daily:${new Date().toISOString().slice(0, 10)}`;
 }
 
-function rateKey(ip: string): string {
-  return `guard:rate:${ip}`;
+const AI_SCOPE = "ai";
+
+function rateKey(ip: string, scope: string): string {
+  // 기존 AI 라우트의 키 모양은 그대로 둔다(운영 중인 카운터를 깨지 않기 위해).
+  return scope === AI_SCOPE ? `guard:rate:${ip}` : `guard:rate:${scope}:${ip}`;
 }
 
 function denial(reason: "rate" | "daily"): GuardResult {
@@ -172,7 +181,7 @@ export async function checkGuard(
   }
 
   const store = createCounterStore();
-  const perIpCount = await store.incr(rateKey(clientIp(req)), RATE_TTL_SECONDS);
+  const perIpCount = await store.incr(rateKey(clientIp(req), options.scope ?? AI_SCOPE), RATE_TTL_SECONDS);
   const dailyCount = options.consumeDaily === false
     ? 0
     : await store.incr(dailyKey(), DAILY_TTL_SECONDS);

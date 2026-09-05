@@ -118,13 +118,13 @@ export function CreateView({
     <main className="min-h-[100dvh] bg-canvas font-sans text-text">
       <div className="mx-auto max-w-6xl px-ds-5 py-ds-6 sm:px-ds-8">
         <header className="mb-ds-8 flex flex-wrap items-center gap-ds-4 border-b border-border pb-ds-5">
-          <Link href="/" className="flex items-center gap-ds-2 text-text transition-opacity duration-micro hover:opacity-80" title="처음 화면으로">
+          <Link href="/explore" className="flex items-center gap-ds-2 text-text transition-opacity duration-micro hover:opacity-80" title="처음 화면으로">
             <span className="h-ds-2 w-ds-2 rounded-ds-full bg-accent" aria-hidden="true" />
             <span className="text-ds-body font-semibold">모두의 영화 창작</span>
           </Link>
           <span className="text-ds-body-sm text-muted">떠들면 이야기가 됩니다</span>
           <nav className="ml-auto flex flex-wrap items-center gap-ds-4 text-ds-body-sm" aria-label="주요 메뉴">
-            <Link href="/" className="text-muted transition-colors duration-micro hover:text-text">탐색</Link>
+            <Link href="/explore" className="text-muted transition-colors duration-micro hover:text-text">탐색</Link>
             <span className="font-semibold text-accent" aria-current="page">만들기</span>
             <Link href="/write" className="text-muted transition-colors duration-micro hover:text-text">글쓰기</Link>
             <Link href="/studio" className="text-muted transition-colors duration-micro hover:text-text">작업실</Link>

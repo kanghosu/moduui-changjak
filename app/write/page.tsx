@@ -144,14 +144,14 @@ function WriteInner() {
     <main className="mx-auto max-w-6xl px-5 py-6">
       {/* 헤더 */}
       <header className="mb-6 flex items-center gap-4">
-        <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80" title="처음 화면으로">
+        <Link href="/explore" className="flex items-center gap-2.5 transition-opacity hover:opacity-80" title="처음 화면으로">
           <span className="h-2.5 w-2.5 rounded-full bg-cinema-amber" />
           <h1 className="text-lg font-semibold tracking-tight">모두의 영화 창작</h1>
         </Link>
         <span className="text-xs text-cinema-dim">시네마 스튜디오</span>
         <span className="flex-1" />
         <nav className="flex items-center gap-4 text-[15px]">
-          <Link href="/" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">탐색</Link>
+          <Link href="/explore" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">탐색</Link>
           <span className="border-b-2 border-cinema-amber pb-0.5 font-semibold text-cinema-amber">글쓰기</span>
           <Link href="/studio" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">작업실</Link>
           <Link href="/library" className="font-medium text-cinema-dim transition-colors hover:text-cinema-text">내 서재</Link>

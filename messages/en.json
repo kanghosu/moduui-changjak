@@ -1,0 +1,111 @@
+{
+  "brand": "Modu Story",
+  "hero": {
+    "h": "Talk it out,\nand it becomes a story",
+    "p": "Say your idea out loud. We shape it into a four-act, 24-block story map.\nThe hook stays yours.",
+    "cta": "Try it now",
+    "cta2": "Get launch updates"
+  },
+  "problem": {
+    "h": "You have the idea,\nbut not the next scene",
+    "p": "Most stories stop somewhere between having an idea and knowing what happens next.\nThe problem is not a blank page. It is a blank structure.",
+    "blank": "Waiting for the next scene"
+  },
+  "turn": {
+    "h": "Start talking,\nand cards appear",
+    "p": "A lighthouse keeper, a younger sibling, a storm, a feeling of guilt. Your words become character, scene, and emotion cards.\nKeep answering and the story grows. Say none and move on.",
+    "words": {
+      "1": "Lighthouse keeper",
+      "2": "Younger sibling",
+      "3": "Storm",
+      "4": "Guilt"
+    },
+    "cards": {
+      "character": "Character",
+      "scene": "Scene",
+      "emotion": "Emotion"
+    }
+  },
+  "structure": {
+    "h": "Cards find their place\non 24 blocks",
+    "p": "Four acts, three turning points, an antagonist that rises three times.\nA master storyteller's method, turned into an engine.",
+    "callouts": {
+      "7": "Starting point",
+      "13": "Turning point (central reversal)",
+      "19": "Leap of anger"
+    },
+    "acts": {
+      "1": "Act 1 · Blocks 1–6",
+      "2": "Act 2 · Blocks 7–12",
+      "3": "Act 3 · Blocks 13–18",
+      "4": "Act 4 · Blocks 19–24"
+    }
+  },
+  "library": {
+    "h": "A master's skeleton\nwaits beside you",
+    "p": "Stories people loved are mapped in the same 24-block frame.\nChoose a shape and place it beside your own story."
+  },
+  "done": {
+    "h": "The structure is the engine,\nthe hook stays yours",
+    "focus": "yours",
+    "p": "The engine sets up the bones and the cause-and-effect.\nThe feeling, detail, and one thing only this story can do remain yours."
+  },
+  "try": {
+    "h": "Start writing\nright now",
+    "p": "The beta is free and starts without a login.\nWe will email you when the full release is ready."
+  },
+  "blocks": {
+    "1": "Opening event",
+    "2": "Meet the protagonist · lack",
+    "3": "Everyday effort to fill the lack",
+    "4": "Inciting event",
+    "5": "Confusion and dilemma",
+    "6": "Temporary relief",
+    "7": "Starting point",
+    "8": "B-story character arrives",
+    "9": "The antagonist's claw",
+    "10": "Pursuit of immediate desire",
+    "11": "Highlight",
+    "12": "Frustration",
+    "13": "Turning point · central reversal",
+    "14": "The antagonist's true face",
+    "15": "Higher desire and alliance",
+    "16": "The antagonist advances",
+    "17": "Crisis builds",
+    "18": "Peak · loss",
+    "19": "Leap of anger",
+    "20": "Preparing the counterattack",
+    "21": "Final confrontation",
+    "22": "Reward and blessing",
+    "23": "Truth takes root",
+    "24": "A new path"
+  },
+  "form": {
+    "toggle": "Launch updates · contact",
+    "email": "Your email",
+    "name": "Name (optional)",
+    "message": "Anything you would like to tell us? (optional)",
+    "submit": "Get launch updates",
+    "contact": "Send a message",
+    "done": "You are on the list. We will be in touch.",
+    "duplicate": "This email is already on the list.",
+    "error": "Something went wrong. Please try again.",
+    "typeWaitlist": "Launch updates",
+    "typeContact": "Contact",
+    "rateLimited": "Too many requests. Please try again in a moment."
+  },
+  "footer": {
+    "note": "Built on Kim Tae-won's Recipe of Desire four-act, 24-block method.",
+    "honest": "Beta results without an API key are rule-based drafts."
+  },
+  "lang": {
+    "en": "English",
+    "ko": "한국어",
+    "zh": "简体中文"
+  },
+  "visual": {
+    "create": "The writing room story map",
+    "explore": "The story structure explorer",
+    "library": "A story map placed beside yours"
+  }
+}

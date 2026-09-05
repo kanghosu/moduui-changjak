@@ -49,13 +49,13 @@ export default function MoviePage({ params }: { params: { title: string } }) {
   return (
     <main className="mx-auto max-w-6xl px-5 py-6">
       <header className="mb-6 flex items-center gap-4">
-        <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80" title="처음 화면으로">
+        <Link href="/explore" className="flex items-center gap-2.5 transition-opacity hover:opacity-80" title="처음 화면으로">
           <span className="h-2.5 w-2.5 rounded-full bg-cinema-amber" />
           <h1 className="text-lg font-semibold tracking-tight">모두의 영화 창작</h1>
         </Link>
         <span className="text-xs text-cinema-dim">시네마 스튜디오</span>
         <span className="flex-1" />
-        <Link href="/" className="btn-ghost !px-2.5 !py-1.5 text-xs">← 라이브러리</Link>
+        <Link href="/explore" className="btn-ghost !px-2.5 !py-1.5 text-xs">← 라이브러리</Link>
       </header>
 
       {loading && <div className="card p-10 text-center text-cinema-sub">4막·24블록을 해부하는 중… 🎞️</div>}
