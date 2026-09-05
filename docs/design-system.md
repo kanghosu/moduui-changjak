@@ -188,3 +188,66 @@ Final Draft 13의 Outline Editor 패턴: 상단 구조 레인과 하단 실제 �
 ```
 
 > 시안이 나오면 §1 토큰·§5 패턴과 대조해 어긋난 것(새 색, 퍼센트 진행바, 게임 장식)을 걷어낸다.
+
+## 7. 마케팅 층
+
+랜딩은 제품 작업실의 `--cin-*`·`--c-*` 토큰과 분리된 마케팅 표면이다. 제품 토큰은
+수정하지 않으며, 아래 `--mk-*` 토큰만 `/`, `/ko`, `/zh` 랜딩에서 사용한다.
+
+### 7-1. 팔레트
+
+| 표면 | 토큰 | 값 | 용도 |
+|---|---|---|---|
+| 극장 | `--mk-stage-bg` | `#171717` | hero·problem·turn·try 배경 |
+| 극장 | `--mk-stage-text` | `#EDEFF3` | 제목·본문 |
+| 극장 | `--mk-stage-sub` | `#746F67` | 보조 설명 |
+| 극장 | `--mk-stage-accent` | `#F07A55` | CTA·전환점·커서 |
+| 극장 | `--mk-stage-accent-ink` | `#171717` | 테라코타 버튼 글자 |
+| 극장 | `--mk-stage-glow` | `rgba(240,122,85,.18)` | 하단 라디얼 글로우 |
+| 작업실 | `--mk-paper-bg` | `#F7F4EF` | structure·library·done 배경 |
+| 작업실 | `--mk-paper-card` | `#FFFCF8` | 카드·필름 스트립 |
+| 작업실 | `--mk-paper-line` | `#E5DED4` | 카드·눈금 경계 |
+| 작업실 | `--mk-paper-text` | `#242321` | 제목·본문 |
+| 작업실 | `--mk-paper-sub` | `#746F67` | 보조 설명 |
+| 작업실 | `--mk-paper-accent` | `#F07A55` | 전환점·밑줄 |
+| 작업실 | `--mk-paper-slate` | `#486A7A` | B스토리 칩 |
+| 작업실 | `--mk-paper-alert` | `#C0392B` | 적대자 상승 테두리 |
+
+### 7-2. 디스플레이 타이포그래피
+
+Pretendard를 유지한다. `display-1`은 96px/1.05/700/-0.02em(모바일 40px/1.1),
+`display-2`는 72px/1.08/700(모바일 36px/1.1), `headline`은 44px/1.15/600
+(모바일 32px/1.2), `lead`는 20px/1.5/400(모바일 17px/1.55), `label`은
+14px/1.4/600/+0.2em(모바일 12px)이다. 제목의 의도된 2줄은 사전의 `\n`을 `<br>`로
+렌더하고, 본문은 의미 단위가 고립되지 않도록 자연스럽게 줄바꿈한다.
+
+### 7-3. 모션·반응형 규칙
+
+| 토큰 | 값 | 용도 |
+|---|---|---|
+| `--mo-micro` | `120ms` | 버튼·토글 |
+| `--mo-reveal` | `480ms cubic-bezier(.2,.8,.2,1)` | 섹션 진입 |
+| `--mo-stagger` | `120ms` | 카드·단어 순차 지연 |
+
+`PinSection`은 부모의 `data-pin-vh` 높이(100/150/200/250vh)와 자식의
+`position: sticky; top: 0`으로 구성한다. Motion의 진행값은
+`useScroll({ target, offset: ["start start", "end end"] })`에서 가져오며, 색상·transform·
+opacity만 스크롤과 연결한다. 640px 이하 또는 `prefers-reduced-motion: reduce`에서는
+부모 높이와 sticky를 해제하고 `data-pin="false"`, 진행값 1, 정적 최종 상태를 쓴다.
+
+### 7-4. 섹션 리듬과 마케팅 전용 컴포넌트
+
+콘텐츠 최대 폭은 1120px, 좌우 여백은 5vw, 섹션 간 여백은 0으로 둔다. 극장→작업실
+전환은 `turn-cards.webp`와 작업실 오버레이를 섹션 3 안에서 한 번 사용하고, 섹션
+6→7은 하드컷한다. 재사용 primitive는 `MarketingScrollProvider`, `PinSection`, `Reveal`, `ProductFrame`,
+`Timeline24`, `BlockGrid`, `WordToCards`, `MarketingFooter`이며 각각 기본·모바일·
+reduced-motion 상태를 제공한다. 기존 `WaitlistForm`과 평범한 `<a>` 기반 `LangSwitcher`는
+재사용하되, 폼의 fetch 계약과 언어 전환 방식은 바꾸지 않는다.
+
+### 7-5. 마케팅 접근성·정직성
+
+모든 CTA는 실제 링크 또는 버튼이고 포커스 링을 유지한다. 의미 있는 이미지는
+`next/image`로 크기와 alt를 지정하며, 분위기 이미지는 빈 alt를 사용한다. 핀과
+스크롤 연동은 정보의 순서를 바꾸지 않고, reduced-motion에서는 24칸 전체·카드 최종
+상태를 바로 보여준다. 라이브러리 편수, 수상·뱃지·과장 표현, API 키 없는 결과의
+AI 표기는 사용하지 않는다.

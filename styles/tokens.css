@@ -1,6 +1,4 @@
-/* Pretendard — 공식 variable dynamic-subset (한글 글리프 지연 로딩).
-   기존 static woff2 경로는 jsdelivr에서 404였음(2026-08-25 실측). */
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css");
+/* Pretendard static KR subsets are bundled through next/font/local. */
 
 :root {
   color-scheme: light;
@@ -46,7 +44,7 @@
   --radius-xl: 24px;
   --radius-full: 999px;
 
-  --font-family-sans: "Pretendard Variable", Pretendard, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-sans: var(--font-pretendard, "Pretendard"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-size-body: 15px;
   --font-size-body-sm: 13.5px;
   --font-size-label: 12px;

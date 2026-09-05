@@ -33,6 +33,26 @@ const config: Config = {
           dim: "rgb(var(--cin-dim) / <alpha-value>)",
           amber: "rgb(var(--cin-amber) / <alpha-value>)",
         },
+        mk: {
+          stage: {
+            bg: "#171717",
+            text: "#EDEFF3",
+            sub: "#746F67",
+            accent: "#F07A55",
+            "accent-ink": "#171717",
+            glow: "rgba(240, 122, 85, 0.18)",
+          },
+          paper: {
+            bg: "#F7F4EF",
+            card: "#FFFCF8",
+            line: "#E5DED4",
+            text: "#242321",
+            sub: "#746F67",
+            accent: "#F07A55",
+            slate: "#486A7A",
+            alert: "#C0392B",
+          },
+        },
       },
       spacing: {
         "ds-1": "var(--space-1)",
@@ -63,6 +83,23 @@ const config: Config = {
         "ds-h3": ["var(--font-size-h3)", { lineHeight: "var(--line-height-heading)" }],
         "ds-h2": ["var(--font-size-h2)", { lineHeight: "var(--line-height-heading)" }],
         "ds-h1": ["var(--font-size-h1)", { lineHeight: "1.25" }],
+        "display-1": [
+          "var(--mk-display-1-size)",
+          { lineHeight: "var(--mk-display-1-line-height)", fontWeight: "700", letterSpacing: "-0.02em" },
+        ],
+        "display-2": [
+          "var(--mk-display-2-size)",
+          { lineHeight: "var(--mk-display-2-line-height)", fontWeight: "700" },
+        ],
+        headline: [
+          "var(--mk-headline-size)",
+          { lineHeight: "var(--mk-headline-line-height)", fontWeight: "600" },
+        ],
+        lead: ["var(--mk-lead-size)", { lineHeight: "var(--mk-lead-line-height)", fontWeight: "400" }],
+        "mk-label": [
+          "var(--mk-label-size)",
+          { lineHeight: "var(--mk-label-line-height)", fontWeight: "600", letterSpacing: "var(--mk-label-tracking)" },
+        ],
       },
       letterSpacing: {
         "ds-label": "var(--tracking-label)",
@@ -70,6 +107,8 @@ const config: Config = {
       transitionDuration: {
         micro: "var(--duration-micro)",
         standard: "var(--duration-standard)",
+        reveal: "var(--mo-reveal)",
+        stagger: "var(--mo-stagger)",
       },
       boxShadow: {
         "ds-card": "var(--shadow-card)",

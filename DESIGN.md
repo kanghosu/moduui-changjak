@@ -96,3 +96,26 @@
 | 항목 | 위치 | 이유 | 종료 조건 |
 |---|---|---|---|
 | Pretendard CDN 로딩 | `app/layout.tsx` | 기존 MVP의 공통 글꼴을 유지 | self-hosted font 도입 시 제거 |
+
+## 9. Marketing Layer
+
+The landing surface uses a separate theater-to-workroom layer. The existing product
+`--cin-*` and `--c-*` tokens remain unchanged. Marketing components consume only the
+`--mk-*` tokens below.
+
+| Role | Token | Value |
+|---|---|---|
+| Theater background | `--mk-stage-bg` | `#171717` |
+| Theater text / secondary | `--mk-stage-text` / `--mk-stage-sub` | `#EDEFF3` / `#746F67` |
+| Theater accent / ink | `--mk-stage-accent` / `--mk-stage-accent-ink` | `#F07A55` / `#171717` |
+| Workroom background / card | `--mk-paper-bg` / `--mk-paper-card` | `#F7F4EF` / `#FFFCF8` |
+| Workroom line / text / secondary | `--mk-paper-line` / `--mk-paper-text` / `--mk-paper-sub` | `#E5DED4` / `#242321` / `#746F67` |
+| Workroom accent / slate / alert | `--mk-paper-accent` / `--mk-paper-slate` / `--mk-paper-alert` | `#F07A55` / `#486A7A` / `#C0392B` |
+
+Marketing typography is Pretendard with `display-1`, `display-2`, `headline`, `lead`,
+and `label` scales. `MarketingScrollProvider` owns the landing-only Lenis lifecycle;
+`PinSection` owns the sticky parent/child contract, `Timeline24`
+owns scroll-filled film cells and callouts, `BlockGrid` owns the real 24-cell HTML grid,
+and `WordToCards` owns the word-to-card transition. Every primitive has mobile and
+reduced-motion states. Scroll motion uses GPU-friendly opacity/transform/filter only;
+`prefers-reduced-motion` renders the final state without pinning.
